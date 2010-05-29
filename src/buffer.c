@@ -1,9 +1,10 @@
+/* GPL v2 - (c) Anthony Catel <a.catel@weelya.com> 2010 */
+
 #include "buffer.h"
 
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#include <zlib.h>
 
 void buffer_init(buffer *b)
 {
@@ -47,21 +48,21 @@ void buffer_prepare(buffer *b, size_t size)
 	}
 }
 
-buffer_append_data(buffer *b, const char *data, size_t size)
+void buffer_append_data(buffer *b, const char *data, size_t size)
 {
 	buffer_prepare(b, size);
 	memcpy(b->data + b->used, data, size);
 	b->used += size;
 }
 
-buffer_append_char(buffer *b, const char data)
+void buffer_append_char(buffer *b, const char data)
 {
 	buffer_prepare(b, 1);
 	b->data[b->used] = data;
 	b->used++;
 }
 
-buffer_append_string(buffer *b, const char *string)
+void buffer_append_string(buffer *b, const char *string)
 {
 	size_t length;
 	
@@ -73,7 +74,7 @@ buffer_append_string(buffer *b, const char *string)
 	b->used = length;
 }
 
-buffer_append_string_n(buffer *b, const char *string, size_t length)
+void buffer_append_string_n(buffer *b, const char *string, size_t length)
 {
 	buffer_prepare(b, length + 1);
 
