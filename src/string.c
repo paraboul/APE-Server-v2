@@ -12,7 +12,7 @@ string *string_new(const char *str, size_t len, string_encoding encoding)
 			break;
 		case ISO88591:
 		default:
-		
+			
 			break;
 	}
 }
