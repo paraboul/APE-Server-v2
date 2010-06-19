@@ -12,6 +12,8 @@ ape_global *ape_init()
 	ape_global *ape = malloc(sizeof(*ape));
 	struct _fdevent *fdev = &ape->events;
 	
+	signal(SIGPIPE, SIG_IGN);
+		
 	ape->basemem = APE_BASEMEM;
 		
 	fdev->handler = EVENT_UNKNOWN;
@@ -28,8 +30,7 @@ int main(int argc, char **argv)
 {
 	ape_global *ape;
 	ape = ape_init();
-	
-	signal(SIGPIPE, SIG_IGN);
+
 	
 	printf("    _    ____  _____   ____    ___  \n");
 	printf("   / \\  |  _ \\| ____| |___ \\  / _ \\ \n");
@@ -37,6 +38,6 @@ int main(int argc, char **argv)
 	printf(" / ___ \\|  __/| |___   / __/ | |_| |\n");
 	printf("/_/   \\_\\_|   |_____| |_____(_)___/ \n\t   AJAX Push Engine\n\n");
 	printf("Build   : %s %s\n", __DATE__, __TIME__);
-	printf("Author  : Paraboulator (paralastar@hotmail.com)\n\n");	
+	printf("Author  : Anthony Catel (a.catel@weelya.com)\n\n");	
 }
 

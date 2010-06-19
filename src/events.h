@@ -1,9 +1,11 @@
 #ifndef _EVENTS_H_
 #define _EVENTS_H_
 
+#include "config.h"
 /* Generics flags */
 #define EVENT_READ 0x01
 #define EVENT_WRITE 0x02
+
 
 typedef enum {
 	EVENT_UNKNOWN,

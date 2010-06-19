@@ -6,6 +6,7 @@
 #include <time.h>
 #include <sys/epoll.h>
 #include <string.h>
+#include <stdlib.h>
 
 #ifdef USE_EPOLL_HANDLER
 static int event_epoll_add(struct _fdevent *ev, int fd, int bitadd)
@@ -51,7 +52,7 @@ static int event_epoll_get_fd(struct _fdevent *ev, int i)
 
 static void event_epoll_growup(struct _fdevent *ev)
 {
-	ev->events =xrealloc(ev->events, sizeof(struct epoll_event) * (*ev->basemem));
+	ev->events = realloc(ev->events, sizeof(struct epoll_event) * (*ev->basemem));
 }
 
 static int event_epoll_revent(struct _fdevent *ev, int i)
