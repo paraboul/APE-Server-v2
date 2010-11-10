@@ -5,7 +5,7 @@
 #include "events.h"
 
 #define APE_BASEMEM 512
-#define __REV "2.0b1"
+#define __REV "2.0wip"
 
 
 typedef struct _ape_global {
