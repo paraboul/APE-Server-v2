@@ -1,5 +1,5 @@
-#ifndef _BUFFER_H_
-#define _BUFFER_H_
+#ifndef __BUFFER_H_
+#define __BUFFER_H_
 
 #include <stdlib.h>
 #include <sys/types.h>

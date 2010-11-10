@@ -68,10 +68,7 @@ void buffer_append_string(buffer *b, const char *string)
 	
 	length = strlen(string);
 	
-	buffer_prepare(b, length + 1);
-
-	memcpy(b->data + b->used, string, length+1);
-	b->used = length;
+	buffer_append_string_n(b, string, length);
 }
 
 void buffer_append_string_n(buffer *b, const char *string, size_t length)

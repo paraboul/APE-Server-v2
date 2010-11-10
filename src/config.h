@@ -1,6 +1,6 @@
-#ifndef _CONFIG_H_
-#define _CONFIG_H_
+#ifndef __CONFIG_H_
+#define __CONFIG_H_
 
-#define  USE_EPOLL_HANDLER
+#define  USE_KQUEUE_HANDLER
 
 #endif

@@ -1,6 +1,7 @@
 #include "common.h"
 #include "events.h"
 
+
 /*int events_add(struct _fdevent *ev, int fd, int bitadd)
 {
 	if (ev->add(ev, fd, bitadd) == -1) {
@@ -47,10 +48,11 @@ int events_init(ape_global *ape)
 	
 	switch(ape->events.handler) {
 		case EVENT_EPOLL:
-			return event_epoll_init(ape->events);
+			return event_epoll_init(&ape->events);
 			break;
 		case EVENT_KQUEUE:
-			//return event_kqueue_init(ape->events);
+			return event_kqueue_init(&ape->events);
+			break;
 		default:
 			break;
 	}

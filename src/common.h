@@ -5,11 +5,14 @@
 #include "events.h"
 
 #define APE_BASEMEM 512
+#define __REV "2.0b1"
+
 
 typedef struct _ape_global {
-	unsigned int basemem;
+	int basemem;
 	struct _fdevent events;
 } ape_global;
 
+int events_init(ape_global *ape);
 
 #endif

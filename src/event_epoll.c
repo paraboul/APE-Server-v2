@@ -4,7 +4,6 @@
 #include "events.h"
 #include <sys/time.h>
 #include <time.h>
-#include <sys/epoll.h>
 #include <string.h>
 #include <stdlib.h>
 

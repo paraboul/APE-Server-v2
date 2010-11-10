@@ -1,10 +1,11 @@
 #include "string.h"
 
+#include <stdlib.h>
 #include <string.h>
 
 string *string_new(const char *str, size_t len, string_encoding encoding)
 {
-	buffer *b;
+	//buffer *b;
 	
 	switch(encoding) {
 		case UTF8:

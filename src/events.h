@@ -1,7 +1,17 @@
-#ifndef _EVENTS_H_
-#define _EVENTS_H_
+#ifndef __EVENTS_H_
+#define __EVENTS_H_
 
 #include "config.h"
+
+#include "common.h"
+
+#ifdef USE_KQUEUE_HANDLER
+#include <sys/event.h>
+#endif
+#ifdef USE_EPOLL_HANDLER
+#include <sys/epoll.h>
+#endif
+
 /* Generics flags */
 #define EVENT_READ 0x01
 #define EVENT_WRITE 0x02
@@ -39,6 +49,9 @@ struct _fdevent {
 	
 	fdevent_handler_t handler;
 };
+
+int event_kqueue_init(struct _fdevent *ev);
+int event_epoll_init(struct _fdevent *ev);
 
 #endif
 
