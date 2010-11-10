@@ -19,21 +19,15 @@
 
 /* sock.c */
 
-#include <sys/types.h> 
-#include <netinet/in.h> 
-#include <netinet/tcp.h>
-#include <sys/socket.h> 
-#include <sys/wait.h>
-#include <arpa/inet.h>
-#include <fcntl.h>
+#include "socket.h"
 
-#include <sys/ioctl.h>
 #include <sys/time.h>
+#include <fcntl.h>
 #include <time.h>
 #include <errno.h>
 #include <stdint.h>
 
-static void setnonblocking(int fd)
+static inline void setnonblocking(int fd)
 {
 	int old_flags;
 	
@@ -46,7 +40,52 @@ static void setnonblocking(int fd)
 }
 
 
-int ape_socket_new(uint16_t port)
+void *ape_socket_new(uint16_t port, const char *ip, ape_socket_type type)
 {
+	int sock, proto = SOCK_STREAM;
+	struct sockaddr_in addr;
 	
+#ifdef __WIN32
+	WORD wVersionRequested;
+	WSADATA wsaData;
+	int err;
+
+	wVersionRequested = MAKEWORD( 2, 2 );
+
+	err = WSAStartup( wVersionRequested, &wsaData );
+	if ( err != 0 ) {
+		return NULL;
+	}	
+#endif
+	if (port == 0 || port > 65535) {
+		return NULL;
+	}
+	
+	switch(type) {
+		case APE_SOCKET_UDP:
+			proto = SOCK_DGRAM;
+			break;
+		case APE_SOCKET_TCP:
+		default:
+			proto = SOCK_STREAM;
+	}
+	
+	if ((sock = socket(AF_INET /* TODO AF_INET6 */, proto, 0)) == -1) {
+		return NULL;
+	}
+	
+	addr.sin_family = AF_INET;
+	addr.sin_port = htons(port);
+	addr.sin_addr.s_addr = inet_addr(ip);
+	memset(&(addr.sin_zero), '\0', 8);
+	
+	setnonblocking(sock);
+	
+	
+	return NULL;
 }
+
+
+
+
+
