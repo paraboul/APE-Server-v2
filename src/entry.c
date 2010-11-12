@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <signal.h>
 
+#include "hash.h"
 
 ape_global *ape_init()
 {
@@ -35,6 +36,7 @@ ape_global *ape_init()
 int main(int argc, char **argv)
 {
 	ape_global *ape;
+	uint64_t h;
 	
 	if ((ape = ape_init()) == NULL) {
 		printf("Failed to allocate APE object\n");
@@ -48,6 +50,12 @@ int main(int argc, char **argv)
 	printf("/_/   \\_\\_|   |_____| |_____(_)___/ \n\t   Async Push Engine (%s)\n\n", __REV);
 	printf("Build   : %s %s\n", __DATE__, __TIME__);
 	printf("Author  : Anthony Catel (a.catel@weelya.com)\n\n");
+	
+	h = hash("fop", 3, 0);
+	
+	printf("arch : %llx\n", h);
+	printf("arch : %x\n", h >> 32);
+	printf("Hash : %x\n", 0);
 	
 	return 0;
 }

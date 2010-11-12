@@ -27,20 +27,28 @@
 #include <errno.h>
 #include <stdint.h>
 
-static inline void setnonblocking(int fd)
-{
-	int old_flags;
-	
-	old_flags = fcntl(fd, F_GETFL, 0);
-	
-	if (!(old_flags & O_NONBLOCK)) {
-		old_flags |= O_NONBLOCK;
-	}
-	fcntl(fd, F_SETFL, old_flags);	
+
+/* 
+	Use only one syscall (ioctl) if FIONBIO is defined
+	It behave the same for socket file descriptor to use either ioctl(...FIONBIO...) or fcntl(...O_NONBLOCK...)
+*/
+#ifdef FIONBIO
+
+static inline int setnonblocking(int fd)
+{	
+    int  ret = 1;
+
+    return ioctl(fd, FIONBIO, &ret);	
 }
 
+#else
 
-void *ape_socket_new(uint16_t port, const char *ip, ape_socket_type type)
+#define setnonblocking(fd) fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK)
+
+#endif
+
+
+void *ape_socket_new(uint16_t port, const char *ip, ape_socket_proto pt)
 {
 	int sock, proto = SOCK_STREAM;
 	struct sockaddr_in addr;
@@ -61,7 +69,7 @@ void *ape_socket_new(uint16_t port, const char *ip, ape_socket_type type)
 		return NULL;
 	}
 	
-	switch(type) {
+	switch(pt) {
 		case APE_SOCKET_UDP:
 			proto = SOCK_DGRAM;
 			break;
@@ -83,6 +91,21 @@ void *ape_socket_new(uint16_t port, const char *ip, ape_socket_type type)
 	
 	
 	return NULL;
+}
+
+int ape_socket_listen()
+{
+
+}
+
+int ape_socket_connect()
+{
+
+}
+
+int ape_socket_destroy()
+{
+
 }
 
 
