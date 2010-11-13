@@ -21,6 +21,7 @@
 
 #include "socket.h"
 
+#include <stdio.h>
 #include <sys/time.h>
 #include <fcntl.h>
 #include <time.h>
@@ -28,6 +29,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <sys/sendfile.h>
 
 
 /* 
@@ -100,6 +102,9 @@ ape_socket *APE_socket_new(ape_socket_proto pt, int from)
 
 	buffer_init(&ret->data_in);
 	buffer_init(&ret->data_out);
+	
+	ret->file_out.fd 	= 0;
+	ret->file_out.offset 	= 0;
 	
 	return ret;
 }
@@ -212,5 +217,31 @@ inline int ape_socket_read(ape_socket *socket, ape_global *ape)
 	
 	return socket->data_in.used;
 }
+
+int ape_socket_write_file(ape_socket *socket, const char *file, ape_global *ape)
+{
+	int fd, nwrite = 0;
+	off_t offset = 0;
+	
+	if ((fd = open(file, O_RDONLY)) == -1) {
+		shutdown(socket->fd, 2);
+		return 0;
+	}
+	
+	do {
+		nwrite = sendfile(socket->fd, fd, &offset, 2048);
+		printf("write %i\n", nwrite);
+		if (nwrite == -1) {
+			break;
+		}
+		//printf("write %i\n", nwrite);
+	} while (nwrite > 0);
+	
+	shutdown(socket->fd, 2);
+	
+	return 1;
+}
+
+
 
 

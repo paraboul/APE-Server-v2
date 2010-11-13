@@ -4,13 +4,18 @@
 #include "common.h"
 #include "socket.h"
 #include "http_parser.h"
+#include "buffer.h"
 
 #define APE_CLIENT(socket) ((ape_client *)socket->ctx)
 
 typedef struct {
 	ape_socket *socket;
 	char ip[16];
-	http_parser http;
+	struct {
+		http_parser parser;
+		http_method_t method;
+		buffer *path;
+	} http;
 } ape_client;
 
 typedef struct {

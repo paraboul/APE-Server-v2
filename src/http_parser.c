@@ -82,13 +82,6 @@ static int ascii_class[128] = {
 	C_ETC,   C_ETC,   C_ETC,   C_ETC,   C_ETC,   C_ETC,   C_ETC,   C_NUL
 };
 
-
-
-enum methods {
-	HTTP_GET,
-	HTTP_POST
-};
-
 typedef enum actions {
 	MG = -2, /* Method get */
 	MP = -3, /* Method post */
@@ -131,7 +124,7 @@ static int state_transition_table[NR_STATES][NR_CLASSES] = {
 /* new line 	  EL*/ {__,__,__,ER,C1,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__},
 /* \r expect \n   ER*/ {__,__,__,__,C1,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__},
 /* header key 	  HK*/ {__,__,__,__,__,KH,__,__,__,__,__,HK,__,__,__,__,HK,__,HK,HK,HK,HK,HK,HK,HK,HK,HK,HK,HK},
-/* header value   HV*/ {__,HV,__,VH,VH,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HK,HV,HV,HV,HV,HV,HK,HK,HK,HK,HK},
+/* header value   HV*/ {__,HV,__,VH,VH,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV},
 /*C               C1*/ {__,__,__,FI,EH,KH,__,__,__,__,__,HK,__,__,__,__,HK,__,HK,HK,HK,HK,HK,HK,HK,HK,C2,HK,HK},
 /*Co              C2*/ {__,__,__,__,__,KH,__,__,__,__,__,HK,__,__,__,__,HK,__,HK,HK,HK,HK,HK,HK,C3,HK,HK,HK,HK},
 /*Con             C3*/ {__,__,__,__,__,KH,__,__,__,__,__,HK,__,__,__,__,HK,__,HK,HK,HK,HK,HK,HK,HK,HK,HK,C4,HK},
@@ -155,7 +148,7 @@ static int state_transition_table[NR_STATES][NR_CLASSES] = {
 };
 
 /* compiled as jump table by gcc */
-int parse_http_char(struct _http_parser *parser, const unsigned char c)
+inline int parse_http_char(struct _http_parser *parser, const unsigned char c)
 {
 	
 	parser_class c_classe = ascii_class[c];
@@ -167,10 +160,11 @@ int parse_http_char(struct _http_parser *parser, const unsigned char c)
 	if (c_classe == C_NUL) return 0;
 	
 	state = state_transition_table[parser->state][c_classe]; /* state > 0, action < 0 */
-	
+
 	if (state >= 0) {
 		parser->state = state;
 	} else {
+		
 		switch(state) {
 			case MG: /* GET detected */
 				parser->callback(parser->ctx, HTTP_METHOD, HTTP_GET, parser->step);
@@ -254,8 +248,10 @@ int parse_http_char(struct _http_parser *parser, const unsigned char c)
 				parser->callback(parser->ctx, HTTP_HEADER_END, 0, parser->step);
 				break;
 			default:
+				printf("wtf %i\n", state);
 				return 0;
 		}
+
 	}
 	
 	return 1;
@@ -264,7 +260,8 @@ int parse_http_char(struct _http_parser *parser, const unsigned char c)
 
 
 /* also compiled as jump table */
-/*static int parse_callback(void *ctx, callback_type type, int value, uint32_t step)
+/*
+static int parse_callback(void *ctx, callback_type type, int value, uint32_t step)
 {
 	switch(type) {
 		case HTTP_METHOD:
@@ -277,15 +274,15 @@ int parse_http_char(struct _http_parser *parser, const unsigned char c)
 					break;
 			}
 			break;
-		case HTTP_PATH:
-			printf("End of path on byte %i\n", step);
+		case HTTP_PATH_END:
+			printf("\n", step);
+			break;
+		case HTTP_PATH_CHAR: 
+			printf("%c", (unsigned char)value);
 			break;
 		case HTTP_VERSION_MAJOR:
 		case HTTP_VERSION_MINOR:
 			printf("Version detected %i\n", value);
-			break;
-		case HTTP_EOL:
-			printf("End of line\n");
 			break;
 		case HTTP_HEADER_KEY:
 			printf("Header key\n");
@@ -295,6 +292,9 @@ int parse_http_char(struct _http_parser *parser, const unsigned char c)
 			break;
 		case HTTP_CL_VAL:
 			printf("CL value : %i\n", value);
+			break;
+		case HTTP_HEADER_END:
+			printf("--------- HEADERS END ---------\n");
 			break;
 		default:
 			break;

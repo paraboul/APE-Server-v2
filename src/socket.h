@@ -69,6 +69,12 @@ typedef struct {
 struct _ape_socket {
 	buffer data_in;
 	buffer data_out;
+	
+	struct {
+		int fd;
+		int offset;
+	} file_out;
+	
 	void *ctx; 	/* public pointer */
 	int fd;
 	ape_socket_callbacks callbacks;
@@ -82,5 +88,6 @@ int APE_socket_listen(ape_socket *socket, uint16_t port, const char *local_ip, a
 
 inline int ape_socket_accept(ape_socket *socket, ape_global *ape);
 inline int ape_socket_read(ape_socket *socket, ape_global *ape);
+int ape_socket_write_file(ape_socket *socket, const char *file, ape_global *ape);
 
 #endif
