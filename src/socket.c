@@ -27,6 +27,7 @@
 #include <errno.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 
 /* 
@@ -80,7 +81,6 @@ ape_socket *APE_socket_new(ape_socket_proto pt, int from)
 		proto = SOCK_STREAM;
 	}
 	
-	
 	if (sock == 0 && (sock = socket(AF_INET /* TODO AF_INET6 */, proto, 0)) == -1) {
 		return NULL;
 	}
@@ -93,7 +93,9 @@ ape_socket *APE_socket_new(ape_socket_proto pt, int from)
 	ret->fd 	= sock;
 	ret->type 	= APE_SOCKET_UNKNOWN;
 	ret->proto	= pt;
-	
+
+	buffer_init(&ret->data_in);
+	buffer_init(&ret->data_out);
 	
 	return ret;
 }
@@ -163,7 +165,17 @@ inline int ape_socket_accept(ape_socket *socket, ape_global *ape)
 /* Consume socket buffer */
 inline int ape_socket_read(ape_socket *socket, ape_global *ape)
 {
-	printf("Data in the tube\n");
+	ssize_t nread;
+	
+	buffer_prepare(&socket->data_in, 2048);
+	
+	
+	nread = read(socket->fd, socket->data_in.data, 2048);
+	
+	socket->data_in.used = nread;
+	
+	buffer_append_char(&socket->data_in, '\0');
+	
 }
 
 

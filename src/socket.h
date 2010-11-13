@@ -2,6 +2,7 @@
 #define __SOCKET_H
 
 #include "common.h"
+#include "buffer.h"
 
 #ifdef __WIN32
 
@@ -41,6 +42,8 @@ typedef enum {
 } ape_socket_type;
 
 typedef struct {
+	buffer data_in;
+	buffer data_out;
 	int fd;
 	ape_socket_type type;
 	ape_socket_proto proto;
