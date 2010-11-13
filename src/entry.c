@@ -65,7 +65,7 @@ int main(int argc, char **argv)
 	#endif
 	
 	sock = APE_socket_new(APE_SOCKET_TCP, 0);
-	APE_socket_listen(sock, 6969, "127.0.0.1", ape);
+	printf("listen : %i\n", APE_socket_listen(sock, 6969, "127.0.0.1", ape));
 	
 	events_loop(ape);
 	

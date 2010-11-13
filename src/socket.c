@@ -70,14 +70,14 @@ ape_socket *APE_socket_new(ape_socket_proto pt, int from)
 	/* TODO WSAClean et al */
 #endif
 
-	
 	switch(pt) {
-		case APE_SOCKET_UDP:
-			proto = SOCK_DGRAM;
-			break;
-		case APE_SOCKET_TCP:
-		default:
-			proto = SOCK_STREAM;
+	
+	case APE_SOCKET_UDP:
+		proto = SOCK_DGRAM;
+		break;
+	case APE_SOCKET_TCP:
+	default:
+		proto = SOCK_STREAM;
 	}
 	
 	
@@ -92,6 +92,7 @@ ape_socket *APE_socket_new(ape_socket_proto pt, int from)
 	ret 		= malloc(sizeof(*ret));
 	ret->fd 	= sock;
 	ret->type 	= APE_SOCKET_UNKNOWN;
+	ret->proto	= pt;
 	
 	
 	return ret;
@@ -114,7 +115,8 @@ int APE_socket_listen(ape_socket *socket, uint16_t port, const char *local_ip, a
 	setsockopt(socket->fd, SOL_SOCKET, SO_REUSEADDR, &reuse_addr, sizeof(int));
 	
 	if (bind(socket->fd, (struct sockaddr *)&addr, sizeof(struct sockaddr)) == -1 ||
-		listen(socket->fd, APE_SOCKET_BACKLOG) == -1) {
+		(socket->proto == APE_SOCKET_TCP && /* only listen for STREAM socket */
+		listen(socket->fd, APE_SOCKET_BACKLOG) == -1)) {
 		
 		return 0;
 	}
@@ -143,14 +145,14 @@ inline int ape_socket_accept(ape_socket *socket, ape_global *ape)
 	struct sockaddr_in their_addr;
 	ape_socket *client;
 	
-	while(1) {
+	while(1) { /* walk through backlog */
 		fd = accept(socket->fd, 
 			(struct sockaddr *)&their_addr,
 			(unsigned int *)&sin_size);
 			
-		if (fd == -1) break;
+		if (fd == -1) break; /* EAGAIN */
 		
-		client 		= APE_socket_new(APE_SOCKET_TCP, fd);
+		client 		= APE_socket_new(socket->proto, fd);
 		client->type 	= APE_SOCKET_CLIENT;
 		
 		events_add(client, APE_SOCKET, EVENT_READ|EVENT_WRITE, ape);
@@ -158,7 +160,10 @@ inline int ape_socket_accept(ape_socket *socket, ape_global *ape)
 	}
 }
 
-
-
+/* Consume socket buffer */
+inline int ape_socket_read(ape_socket *socket, ape_global *ape)
+{
+	printf("Data in the tube\n");
+}
 
 

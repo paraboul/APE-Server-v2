@@ -4,7 +4,7 @@
 
 void events_loop(ape_global *ape)
 {
-	int nfd;
+	int nfd, fd, bitev;
 	
 	while(ape->is_running) {
 		int i;
@@ -15,25 +15,39 @@ void events_loop(ape_global *ape)
 		}
 		
 		for (i = 0; i < nfd; i++) {
-			int fd = events_get_current_fd(&ape->events, i);
+			fd 	= events_get_current_fd(&ape->events, i);
+			bitev 	= events_revent(&ape->events, i);
 			
 			switch(ape->events.fds[fd].type) {
-				case APE_SOCKET:
-					switch(((ape_socket *)ape->events.fds[fd].data)->type) {
-						case APE_SOCKET_SERVER:
-							ape_socket_accept(((ape_socket *)ape->events.fds[fd].data), ape);
-							printf("Event on server\n");
-							break;
-						case APE_SOCKET_CLIENT:
-							printf("Event on client\n");
-							break;
-						case APE_SOCKET_UNKNOWN:
-							break;
+			
+			case APE_SOCKET:
+				switch(APE_SOCKET(fd, ape)->type) {
+				
+				case APE_SOCKET_SERVER:
+					if (bitev & EVENT_READ) {
+						if (APE_SOCKET(fd, ape)->proto == APE_SOCKET_TCP) {
+							ape_socket_accept(APE_SOCKET(fd, ape), ape);
+						} else {							
+							printf("read on UDP\n");
+						}
+					}
+					break;
+				case APE_SOCKET_CLIENT:
+					if (bitev & EVENT_WRITE) {
+						printf("Write on client\n");
+					}
+					if (bitev & EVENT_READ) {
+						ape_socket_read(APE_SOCKET(fd, ape), ape);
 					}
 					
 					break;
-				case APE_FILE:
+				case APE_SOCKET_UNKNOWN:
 					break;
+				}
+				
+				break;
+			case APE_FILE:
+				break;
 			}
 		}
 

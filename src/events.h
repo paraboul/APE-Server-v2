@@ -31,7 +31,7 @@ typedef enum {
 	APE_FILE
 } ape_fds_t;
 
-typedef struct {
+typedef struct { /* Do not store this. Address may changes */
 	void *data;
 	ape_fds_t type;
 } ape_fds;
