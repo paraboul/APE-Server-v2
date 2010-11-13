@@ -96,6 +96,7 @@ ape_socket *APE_socket_new(ape_socket_proto pt, int from)
 
 	ret->callbacks.on_read 		= NULL;
 	ret->callbacks.on_disconnect 	= NULL;
+	ret->callbacks.on_connect	= NULL;
 
 	buffer_init(&ret->data_in);
 	buffer_init(&ret->data_out);

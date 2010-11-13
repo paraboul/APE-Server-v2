@@ -1,10 +1,23 @@
 #include "server.h"
+#include "http_parser.h"
 
+static int ape_http_callback(void *ctx, callback_type type, int value, uint32_t step)
+{
+	ape_client *client = (ape_client *)ctx;
+	
+	printf("We got something\n");
+}
 
 static void ape_server_on_read(ape_socket *socket_client, ape_global *ape)
 {
-	//printf("Data %s\n", socket_client->data_in.data);
-	printf("New data\n");
+	int i;
+	
+	for (i = 0; i < socket_client->data_in.used; i++) {
+		if (!parse_http_char(&APE_CLIENT(socket_client)->http, socket_client->data_in.data[i])) {
+			printf("Failed to parse http\n");
+			break;
+		}
+	}
 }
 
 static void ape_server_on_connect(ape_socket *socket_client, ape_global *ape)
@@ -15,6 +28,11 @@ static void ape_server_on_connect(ape_socket *socket_client, ape_global *ape)
 	client->socket	= socket_client;
 	
 	socket_client->ctx = client; /* link the socket to the client struct */
+	
+	HTTP_PARSER_RESET(&client->http);
+	
+	client->http.callback 	= ape_http_callback;
+	client->http.ctx 	= client;
 	
 	printf("New client\n");
 }
@@ -38,14 +56,13 @@ ape_server *ape_server_init(uint16_t port, const char *local_ip, ape_global *ape
 		return NULL;
 	}
 	
+	server 		= malloc(sizeof(*server));
+	server->socket 	= socket;
+		
 	socket->callbacks.on_read 	= ape_server_on_read;
 	socket->callbacks.on_connect 	= ape_server_on_connect;
 	socket->callbacks.on_disconnect = ape_server_on_disconnect;	
-	
-	server 		= malloc(sizeof(*server));
-	server->socket 	= socket;
-	
-	socket->ctx 	= server; /* link the socket to the server struct */
+	socket->ctx 			= server; /* link the socket to the server struct */
 	
 	return server;
 }
