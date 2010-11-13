@@ -4,6 +4,8 @@
 #include "config.h"
 #include "events.h"
 
+#include <stdio.h>
+
 #define APE_BASEMEM 512
 #define __REV "2.0wip"
 
@@ -11,6 +13,7 @@
 typedef struct _ape_global {
 	int basemem;
 	struct _fdevent events;
+	int is_running:1;
 } ape_global;
 
 int events_init(ape_global *ape);

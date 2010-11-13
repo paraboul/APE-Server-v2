@@ -26,6 +26,11 @@ typedef enum {
 	EVENT_SELECT	/* Generic (Windows) */
 } fdevent_handler_t;
 
+typedef enum {
+	APE_SOCKET,
+	APE_FILE
+} ape_fds_t;
+
 struct _fdevent {
 	/* Common values */
 	int *basemem;
@@ -49,6 +54,10 @@ struct _fdevent {
 	
 	fdevent_handler_t handler;
 };
+
+
+int events_add(struct _fdevent *ev, int fd, int bitadd);
+inline int events_poll(struct _fdevent *ev, int timeout_ms);
 
 int event_kqueue_init(struct _fdevent *ev);
 int event_epoll_init(struct _fdevent *ev);

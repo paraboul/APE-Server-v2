@@ -1,0 +1,11 @@
+APE C API :
+
+- All public functions are defined by "APE_" (uppercase)
+- Non public functions are defined by "ape_" (lowercase)
+
+
+
+Current API :
+
+- ape_socket * APE_socket_new(ape_socket_proto [APE_SOCKET_TCP/APE_SOCKET_UDP])
+- APE_socket_listen(ape_socket *, uint16 port, const char *local_ip, ape_global *)

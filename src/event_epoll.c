@@ -6,6 +6,7 @@
 #include <time.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 #ifdef USE_EPOLL_HANDLER
 static int event_epoll_add(struct _fdevent *ev, int fd, int bitadd)
@@ -97,6 +98,8 @@ int event_epoll_init(struct _fdevent *ev)
 	ev->growup = event_epoll_growup;
 	ev->revent = event_epoll_revent;
 	ev->reload = event_epoll_reload;
+	
+	printf("epoll() started with %i slots\n", *ev->basemem);
 	
 	return 1;
 }

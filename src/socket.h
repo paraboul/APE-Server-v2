@@ -1,6 +1,8 @@
 #ifndef __SOCKET_H
 #define __SOCKET_H
 
+#include "common.h"
+
 #ifdef __WIN32
 
 #include <winsock2.h>
@@ -22,14 +24,25 @@
 #include <netdb.h>
 #endif
 
+#define APE_SOCKET_BACKLOG 2048
+
 typedef enum {
 	APE_SOCKET_TCP,
 	APE_SOCKET_UDP
 } ape_socket_proto;
 
 typedef enum {
+	APE_SOCKET_UNKNOWN,
 	APE_SOCKET_SERVER,
 	APE_SOCKET_CLIENT
 } ape_socket_type;
+
+typedef struct {
+	int fd;
+	ape_socket_type type;
+} ape_socket;
+
+ape_socket *APE_socket_new(ape_socket_proto pt);
+int APE_socket_listen(ape_socket *socket, uint16_t port, const char *local_ip, ape_global *ape);
 
 #endif

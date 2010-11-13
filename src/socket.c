@@ -26,11 +26,12 @@
 #include <time.h>
 #include <errno.h>
 #include <stdint.h>
+#include <stdlib.h>
 
 
 /* 
 	Use only one syscall (ioctl) if FIONBIO is defined
-	It behave the same for socket file descriptor to use either ioctl(...FIONBIO...) or fcntl(...O_NONBLOCK...)
+	It behaves the same for socket file descriptor to use either ioctl(...FIONBIO...) or fcntl(...O_NONBLOCK...)
 */
 #ifdef FIONBIO
 
@@ -48,10 +49,11 @@ static inline int setnonblocking(int fd)
 #endif
 
 
-void *ape_socket_new(uint16_t port, const char *ip, ape_socket_proto pt)
+ape_socket *APE_socket_new(ape_socket_proto pt)
 {
 	int sock, proto = SOCK_STREAM;
-	struct sockaddr_in addr;
+	
+	ape_socket *ret = NULL;
 	
 #ifdef __WIN32
 	WORD wVersionRequested;
@@ -60,14 +62,14 @@ void *ape_socket_new(uint16_t port, const char *ip, ape_socket_proto pt)
 
 	wVersionRequested = MAKEWORD( 2, 2 );
 
-	err = WSAStartup( wVersionRequested, &wsaData );
-	if ( err != 0 ) {
-		return NULL;
-	}	
-#endif
-	if (port == 0 || port > 65535) {
+	err = WSAStartup(wVersionRequested, &wsaData);
+	if (err != 0) {
 		return NULL;
 	}
+	
+	/* TODO WSAClean et al */
+#endif
+
 	
 	switch(pt) {
 		case APE_SOCKET_UDP:
@@ -78,34 +80,66 @@ void *ape_socket_new(uint16_t port, const char *ip, ape_socket_proto pt)
 			proto = SOCK_STREAM;
 	}
 	
+	
 	if ((sock = socket(AF_INET /* TODO AF_INET6 */, proto, 0)) == -1) {
 		return NULL;
 	}
+
+	if (setnonblocking(sock) == -1) {
+		return NULL;
+	}
+
+	ret 		= malloc(sizeof(*ret));
+	ret->fd 	= sock;
+	ret->type 	= APE_SOCKET_UNKNOWN;
+	
+	
+	return ret;
+}
+
+int APE_socket_listen(ape_socket *socket, uint16_t port, const char *local_ip, ape_global *ape)
+{
+	struct sockaddr_in addr;
+	int reuse_addr = 1;
+	
+	if (port == 0 || port > 65535) {
+		return 0;
+	}	
 	
 	addr.sin_family = AF_INET;
 	addr.sin_port = htons(port);
-	addr.sin_addr.s_addr = inet_addr(ip);
+	addr.sin_addr.s_addr = inet_addr(local_ip);
 	memset(&(addr.sin_zero), '\0', 8);
 	
-	setnonblocking(sock);
+	setsockopt(socket->fd, SOL_SOCKET, SO_REUSEADDR, &reuse_addr, sizeof(int));
 	
+	if (bind(socket->fd, (struct sockaddr *)&addr, sizeof(struct sockaddr)) == -1 ||
+		listen(socket->fd, APE_SOCKET_BACKLOG) == -1) {
+		
+		return 0;
+	}
 	
-	return NULL;
+	socket->type = APE_SOCKET_SERVER;
+	
+	events_add(&ape->events, socket->fd, EVENT_READ|EVENT_WRITE);
+	
+	return 1;
+	
 }
 
-int ape_socket_listen()
+int APE_socket_connect(ape_socket *socket)
 {
 
 }
 
-int ape_socket_connect()
+int APE_socket_destroy(ape_socket *socket)
 {
 
 }
 
-int ape_socket_destroy()
+int ape_socket_accept(ape_socket *socket)
 {
-
+	
 }
 
 
