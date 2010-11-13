@@ -30,6 +30,25 @@
 /* get a ape_socket pointer from fd number */
 #define APE_SOCKET(fd, ape) ((ape_socket *)ape->events.fds[fd].data)
 
+#ifdef TCP_CORK
+	#define PACK_TCP(fd) \
+	do { \
+		int __state = 1; \
+		setsockopt(fd, IPPROTO_TCP, TCP_CORK, &__state, sizeof(__state)); \
+	} while(0)
+
+	#define FLUSH_TCP(fd) \
+	do { \
+		int __state = 0; \
+		setsockopt(fd, IPPROTO_TCP, TCP_CORK, &__state, sizeof(__state)); \
+	} while(0)
+#else
+	#define PACK_TCP(fd)
+	#define FLUSH_TCP(fd)
+#endif
+
+typedef struct _ape_socket ape_socket;
+
 typedef enum {
 	APE_SOCKET_TCP,
 	APE_SOCKET_UDP
@@ -42,12 +61,21 @@ typedef enum {
 } ape_socket_type;
 
 typedef struct {
+	void (*on_read)		(ape_socket *, ape_global *);
+	void (*on_disconnect)	(ape_socket *, ape_global *);
+	void (*on_connect)	(ape_socket *, ape_global *);
+} ape_socket_callbacks;
+
+struct _ape_socket {
 	buffer data_in;
 	buffer data_out;
+	void *ctx; 	/* public pointer */
 	int fd;
+	ape_socket_callbacks callbacks;
 	ape_socket_type type;
 	ape_socket_proto proto;
-} ape_socket;
+	
+};
 
 ape_socket *APE_socket_new(ape_socket_proto pt, int from);
 int APE_socket_listen(ape_socket *socket, uint16_t port, const char *local_ip, ape_global *ape);

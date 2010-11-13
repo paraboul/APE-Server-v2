@@ -33,6 +33,13 @@ void buffer_delete(buffer *b)
 	if (b->data != NULL) {
 		free(b->data);
 	}
+}
+
+void buffer_destroy(buffer *b)
+{
+	if (b->data != NULL) {
+		free(b->data);
+	}
 	free(b);
 }
 

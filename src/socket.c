@@ -94,6 +94,9 @@ ape_socket *APE_socket_new(ape_socket_proto pt, int from)
 	ret->type 	= APE_SOCKET_UNKNOWN;
 	ret->proto	= pt;
 
+	ret->callbacks.on_read 		= NULL;
+	ret->callbacks.on_disconnect 	= NULL;
+
 	buffer_init(&ret->data_in);
 	buffer_init(&ret->data_out);
 	
@@ -138,7 +141,12 @@ int APE_socket_connect(ape_socket *socket)
 
 int APE_socket_destroy(ape_socket *socket)
 {
-
+	buffer_delete(&socket->data_in);
+	buffer_delete(&socket->data_out);
+	
+	close(socket->fd);
+	
+	free(socket);
 }
 
 inline int ape_socket_accept(ape_socket *socket, ape_global *ape)
@@ -154,10 +162,15 @@ inline int ape_socket_accept(ape_socket *socket, ape_global *ape)
 			
 		if (fd == -1) break; /* EAGAIN */
 		
-		client 		= APE_socket_new(socket->proto, fd);
-		client->type 	= APE_SOCKET_CLIENT;
+		client 			= APE_socket_new(socket->proto, fd);
+		client->type 		= APE_SOCKET_CLIENT;
+		client->callbacks 	= socket->callbacks; /* clients inherits server callbacks */
 		
 		events_add(client, APE_SOCKET, EVENT_READ|EVENT_WRITE, ape);
+		
+		if (socket->callbacks.on_connect != NULL) {
+			socket->callbacks.on_connect(client, ape);
+		}
 		
 	}
 }
@@ -167,15 +180,36 @@ inline int ape_socket_read(ape_socket *socket, ape_global *ape)
 {
 	ssize_t nread;
 	
-	buffer_prepare(&socket->data_in, 2048);
+	do {
+		buffer_prepare(&socket->data_in, 2048);
+
+		nread = read(socket->fd, 
+			socket->data_in.data + socket->data_in.used, 
+			socket->data_in.size - socket->data_in.used);
+			
+		socket->data_in.used += ape_max(nread, 0);
+		
+	} while (nread > 0);
 	
+	if (socket->data_in.used != 0) {
+		//buffer_append_char(&socket->data_in, '\0');
+
+		if (socket->callbacks.on_read != NULL) {
+			socket->callbacks.on_read(socket, ape);
+		}
 	
-	nread = read(socket->fd, socket->data_in.data, 2048);
+		socket->data_in.used = 0;
+	}
+	if (nread == 0) {
+		if (socket->callbacks.on_disconnect != NULL) {
+			socket->callbacks.on_disconnect(socket, ape);
+		}
+		APE_socket_destroy(socket);
+		
+		return 0;
+	}
 	
-	socket->data_in.used = nread;
-	
-	buffer_append_char(&socket->data_in, '\0');
-	
+	return socket->data_in.used;
 }
 
 

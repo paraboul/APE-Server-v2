@@ -9,6 +9,7 @@
 #include "hash.h"
 #include "socket.h"
 #include "events_loop.h"
+#include "server.h"
 
 ape_global *ape_init()
 {
@@ -64,8 +65,7 @@ int main(int argc, char **argv)
 	printf("Hash : %x\n", 0);
 	#endif
 	
-	sock = APE_socket_new(APE_SOCKET_TCP, 0);
-	printf("listen : %i\n", APE_socket_listen(sock, 6969, "127.0.0.1", ape));
+	ape_server_init(6969, "127.0.0.1", ape);
 	
 	events_loop(ape);
 	

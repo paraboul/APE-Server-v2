@@ -14,6 +14,7 @@ typedef struct {
 void buffer_init(buffer *b);
 buffer *buffer_new(size_t size);
 void buffer_delete(buffer *b);
+void buffer_destroy(buffer *b);
 void buffer_prepare(buffer *b, size_t size);
 void buffer_append_data(buffer *b, const char *data, size_t size);
 void buffer_append_char(buffer *b, const char data);
