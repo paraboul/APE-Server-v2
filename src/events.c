@@ -1,12 +1,31 @@
 #include "common.h"
 #include "events.h"
+#include "socket.h"
+
+#include <stdlib.h>
 
 
-int events_add(struct _fdevent *ev, int fd, int bitadd)
+int events_add(void *fd_data, ape_fds_t type, int bitadd, ape_global *ape)
 {
+	struct _fdevent *ev = &ape->events;
+	int fd;
+
+	
+	switch(type) {
+		case APE_SOCKET:
+			fd = ((ape_socket *)fd_data)->fd;
+			break;
+		case APE_FILE:
+			break;
+	}
+	
 	if (ev->add(ev, fd, bitadd) == -1) {
 		return -1;
 	}
+	
+	ev->fds[fd].data = fd_data;
+	ev->fds[fd].type = type;
+	
 	return 1;
 }
 
@@ -47,6 +66,8 @@ int events_reload(struct _fdevent *ev)
 int events_init(ape_global *ape)
 {
 	ape->events.basemem = &ape->basemem;
+	ape->events.fds = malloc(sizeof(*ape->events.fds) * ape->basemem);
+
 
 	switch(ape->events.handler) {
 		case EVENT_EPOLL:

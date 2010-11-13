@@ -31,32 +31,39 @@ typedef enum {
 	APE_FILE
 } ape_fds_t;
 
+typedef struct {
+	void *data;
+	ape_fds_t type;
+} ape_fds;
+
 struct _fdevent {
 	/* Common values */
 	int *basemem;
+	ape_fds *fds;
+	
 	/* Interface */
-	int (*add)(struct _fdevent *, int, int);
-	int (*poll)(struct _fdevent *, int);
-	int (*get_current_fd)(struct _fdevent *, int);
-	void (*growup)(struct _fdevent *);
-	int (*revent)(struct _fdevent *, int);
-	int (*reload)(struct _fdevent *);
+	int (*add)		(struct _fdevent *, int, int);
+	int (*poll)		(struct _fdevent *, int);
+	int (*get_current_fd)	(struct _fdevent *, int);
+	void (*growup)		(struct _fdevent *);
+	int (*revent)		(struct _fdevent *, int);
+	int (*reload)		(struct _fdevent *);
 	
 	/* Specifics values */
-	#ifdef USE_KQUEUE_HANDLER
+#ifdef USE_KQUEUE_HANDLER
 	struct kevent *events;
 	int kq_fd;
-	#endif
-	#ifdef USE_EPOLL_HANDLER
+#endif
+#ifdef USE_EPOLL_HANDLER
 	struct epoll_event *events;
 	int epoll_fd;
-	#endif
+#endif
 	
 	fdevent_handler_t handler;
 };
 
-
-int events_add(struct _fdevent *ev, int fd, int bitadd);
+int events_init(ape_global *ape);
+int events_add(void *fd_data, ape_fds_t, int bitadd, ape_global *ape);
 inline int events_poll(struct _fdevent *ev, int timeout_ms);
 
 int event_kqueue_init(struct _fdevent *ev);

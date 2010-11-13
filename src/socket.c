@@ -49,9 +49,9 @@ static inline int setnonblocking(int fd)
 #endif
 
 
-ape_socket *APE_socket_new(ape_socket_proto pt)
+ape_socket *APE_socket_new(ape_socket_proto pt, int from)
 {
-	int sock, proto = SOCK_STREAM;
+	int sock = from, proto = SOCK_STREAM;
 	
 	ape_socket *ret = NULL;
 	
@@ -81,7 +81,7 @@ ape_socket *APE_socket_new(ape_socket_proto pt)
 	}
 	
 	
-	if ((sock = socket(AF_INET /* TODO AF_INET6 */, proto, 0)) == -1) {
+	if (sock == 0 && (sock = socket(AF_INET /* TODO AF_INET6 */, proto, 0)) == -1) {
 		return NULL;
 	}
 
@@ -121,7 +121,7 @@ int APE_socket_listen(ape_socket *socket, uint16_t port, const char *local_ip, a
 	
 	socket->type = APE_SOCKET_SERVER;
 	
-	events_add(&ape->events, socket->fd, EVENT_READ|EVENT_WRITE);
+	events_add(socket, APE_SOCKET, EVENT_READ|EVENT_WRITE, ape);
 	
 	return 1;
 	
@@ -137,9 +137,25 @@ int APE_socket_destroy(ape_socket *socket)
 
 }
 
-int ape_socket_accept(ape_socket *socket)
+inline int ape_socket_accept(ape_socket *socket, ape_global *ape)
 {
+	int fd, sin_size = sizeof(struct sockaddr_in);
+	struct sockaddr_in their_addr;
+	ape_socket *client;
 	
+	while(1) {
+		fd = accept(socket->fd, 
+			(struct sockaddr *)&their_addr,
+			(unsigned int *)&sin_size);
+			
+		if (fd == -1) break;
+		
+		client 		= APE_socket_new(APE_SOCKET_TCP, fd);
+		client->type 	= APE_SOCKET_CLIENT;
+		
+		events_add(client, APE_SOCKET, EVENT_READ|EVENT_WRITE, ape);
+		
+	}
 }
 
 

@@ -64,7 +64,7 @@ int main(int argc, char **argv)
 	printf("Hash : %x\n", 0);
 	#endif
 	
-	sock = APE_socket_new(APE_SOCKET_TCP);
+	sock = APE_socket_new(APE_SOCKET_TCP, 0);
 	APE_socket_listen(sock, 6969, "127.0.0.1", ape);
 	
 	events_loop(ape);

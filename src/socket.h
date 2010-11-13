@@ -42,7 +42,9 @@ typedef struct {
 	ape_socket_type type;
 } ape_socket;
 
-ape_socket *APE_socket_new(ape_socket_proto pt);
+ape_socket *APE_socket_new(ape_socket_proto pt, int from);
 int APE_socket_listen(ape_socket *socket, uint16_t port, const char *local_ip, ape_global *ape);
+
+inline int ape_socket_accept(ape_socket *socket, ape_global *ape);
 
 #endif
