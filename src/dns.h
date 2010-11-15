@@ -7,7 +7,7 @@ typedef int (*ape_gethostbyname_callback)(const char *ip);
 
 
 struct _ares_sockets {
-	ape_fds s;
+	_FD_DELEGATE_TPL
 };
 
 

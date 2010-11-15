@@ -45,7 +45,7 @@ ape_global *ape_init()
 
 int dns_cb(const char *ip)
 {
-	//printf("Callback : %s\n", ip);
+	printf("Callback : %s\n", ip);
 }
 
 int main(int argc, char **argv)
@@ -78,7 +78,10 @@ int main(int argc, char **argv)
 	
 	ape_server_init(6969, "127.0.0.1", ape);
 	
-
+	for (z = 0; z < 500; z++) {
+		ape_gethostbyname("lya.eu", dns_cb, ape);
+	}
+	
 	events_loop(ape);
 	
 	return 0;

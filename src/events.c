@@ -54,7 +54,6 @@ int events_reload(struct _fdevent *ev)
 int events_init(ape_global *ape)
 {
 	ape->events.basemem = &ape->basemem;
-	//ape->events.fds = malloc(sizeof(*ape->events.fds) * ape->basemem);
 	
 	switch(ape->events.handler) {
 		case EVENT_EPOLL:
