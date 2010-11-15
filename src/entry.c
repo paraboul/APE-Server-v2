@@ -10,6 +10,7 @@
 #include "socket.h"
 #include "events_loop.h"
 #include "server.h"
+#include "dns.h"
 
 ape_global *ape_init()
 {
@@ -32,9 +33,19 @@ ape_global *ape_init()
 	ape->basemem 	= APE_BASEMEM;
 	ape->is_running = 1;
 	
+	if (ape_dns_init(ape) != 0) {
+		free(ape);
+		return NULL;
+	}
+	
 	events_init(ape);
 	
 	return ape;
+}
+
+int dns_cb(const char *ip)
+{
+	printf("Callback : %s\n", ip);
 }
 
 int main(int argc, char **argv)
@@ -45,7 +56,7 @@ int main(int argc, char **argv)
 	int z = 0;
 	
 	if ((ape = ape_init()) == NULL) {
-		printf("Failed to allocate APE object\n");
+		printf("Failed to init APE\n");
 		exit(1);
 	}
 	
@@ -66,6 +77,7 @@ int main(int argc, char **argv)
 	#endif
 	
 	ape_server_init(6969, "127.0.0.1", ape);
+	//ape_gethostbyname("google.fr", dns_cb, ape);
 	
 	events_loop(ape);
 	

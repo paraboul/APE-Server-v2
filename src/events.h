@@ -28,23 +28,24 @@ typedef enum {
 
 typedef enum {
 	APE_SOCKET,
-	APE_FILE
+	APE_FILE,
+	APE_DELEGATE
 } ape_fds_t;
 
 typedef struct { /* Do not store this. Address may changes */
-	void *data;
+	int fd;
 	ape_fds_t type;
 } ape_fds;
 
 struct _fdevent {
 	/* Common values */
 	int *basemem;
-	ape_fds *fds;
+	//ape_fds *fds;
 	
 	/* Interface */
-	int (*add)		(struct _fdevent *, int, int);
+	int (*add)		(struct _fdevent *, int, int, void *);
 	int (*poll)		(struct _fdevent *, int);
-	int (*get_current_fd)	(struct _fdevent *, int);
+	void *(*get_current_fd)	(struct _fdevent *, int);
 	void (*growup)		(struct _fdevent *);
 	int (*revent)		(struct _fdevent *, int);
 	int (*reload)		(struct _fdevent *);
@@ -63,7 +64,8 @@ struct _fdevent {
 };
 
 int events_init(ape_global *ape);
-int events_add(void *fd_data, ape_fds_t, int bitadd, ape_global *ape);
+int events_add(int fd, void *attach, int bitadd, ape_global *ape);
+inline void *events_get_current_fd(struct _fdevent *ev, int i);
 inline int events_poll(struct _fdevent *ev, int timeout_ms);
 
 int event_kqueue_init(struct _fdevent *ev);

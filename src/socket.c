@@ -92,7 +92,8 @@ ape_socket *APE_socket_new(ape_socket_proto pt, int from)
 	}
 
 	ret 		= malloc(sizeof(*ret));
-	ret->fd 	= sock;
+	ret->s.fd 	= sock;
+	ret->s.type	= APE_SOCKET;
 	ret->type 	= APE_SOCKET_UNKNOWN;
 	ret->proto	= pt;
 
@@ -123,18 +124,20 @@ int APE_socket_listen(ape_socket *socket, uint16_t port, const char *local_ip, a
 	addr.sin_addr.s_addr = inet_addr(local_ip);
 	memset(&(addr.sin_zero), '\0', 8);
 	
-	setsockopt(socket->fd, SOL_SOCKET, SO_REUSEADDR, &reuse_addr, sizeof(int));
+	setsockopt(socket->s.fd, SOL_SOCKET, SO_REUSEADDR, &reuse_addr, sizeof(int));
 	
-	if (bind(socket->fd, (struct sockaddr *)&addr, sizeof(struct sockaddr)) == -1 ||
+	if (bind(socket->s.fd, (struct sockaddr *)&addr, sizeof(struct sockaddr)) == -1 ||
 		(socket->proto == APE_SOCKET_TCP && /* only listen for STREAM socket */
-		listen(socket->fd, APE_SOCKET_BACKLOG) == -1)) {
+		listen(socket->s.fd, APE_SOCKET_BACKLOG) == -1)) {
+		
+		close(socket->s.fd);
 		
 		return 0;
 	}
 	
 	socket->type = APE_SOCKET_SERVER;
 	
-	events_add(socket, APE_SOCKET, EVENT_READ|EVENT_WRITE, ape);
+	events_add(socket->s.fd, socket, EVENT_READ|EVENT_WRITE, ape);
 	
 	return 1;
 	
@@ -149,8 +152,8 @@ int APE_socket_destroy(ape_socket *socket)
 {
 	buffer_delete(&socket->data_in);
 	buffer_delete(&socket->data_out);
-	
-	close(socket->fd);
+
+	close(socket->s.fd);
 	
 	free(socket);
 }
@@ -162,7 +165,7 @@ inline int ape_socket_accept(ape_socket *socket, ape_global *ape)
 	ape_socket *client;
 	
 	while(1) { /* walk through backlog */
-		fd = accept(socket->fd, 
+		fd = accept(socket->s.fd, 
 			(struct sockaddr *)&their_addr,
 			(unsigned int *)&sin_size);
 			
@@ -172,7 +175,7 @@ inline int ape_socket_accept(ape_socket *socket, ape_global *ape)
 		client->type 		= APE_SOCKET_CLIENT;
 		client->callbacks 	= socket->callbacks; /* clients inherits server callbacks */
 		
-		events_add(client, APE_SOCKET, EVENT_READ|EVENT_WRITE, ape);
+		events_add(client->s.fd, client, EVENT_READ|EVENT_WRITE, ape);
 		
 		if (socket->callbacks.on_connect != NULL) {
 			socket->callbacks.on_connect(client, ape);
@@ -189,7 +192,7 @@ inline int ape_socket_read(ape_socket *socket, ape_global *ape)
 	do {
 		buffer_prepare(&socket->data_in, 2048);
 
-		nread = read(socket->fd, 
+		nread = read(socket->s.fd, 
 			socket->data_in.data + socket->data_in.used, 
 			socket->data_in.size - socket->data_in.used);
 			
@@ -224,20 +227,23 @@ int ape_socket_write_file(ape_socket *socket, const char *file, ape_global *ape)
 	off_t offset = 0;
 	
 	if ((fd = open(file, O_RDONLY)) == -1) {
-		shutdown(socket->fd, 2);
+		shutdown(socket->s.fd, 2);
 		return 0;
 	}
 	
 	do {
-		nwrite = sendfile(socket->fd, fd, &offset, 2048);
-		printf("write %i\n", nwrite);
+		PACK_TCP(socket->s.fd);
+		nwrite = sendfile(socket->s.fd, fd, &offset, 2048);
+		//printf("write %i\n", nwrite);
 		if (nwrite == -1) {
 			break;
 		}
+		FLUSH_TCP(socket->s.fd);
 		//printf("write %i\n", nwrite);
 	} while (nwrite > 0);
 	
-	shutdown(socket->fd, 2);
+	close(fd);
+	shutdown(socket->s.fd, 2);
 	
 	return 1;
 }

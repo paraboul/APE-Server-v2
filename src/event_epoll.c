@@ -7,9 +7,10 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include "socket.h"
 
 #ifdef USE_EPOLL_HANDLER
-static int event_epoll_add(struct _fdevent *ev, int fd, int bitadd)
+static int event_epoll_add(struct _fdevent *ev, int fd, int bitadd, void *attach)
 {
 	struct epoll_event kev;
 	
@@ -25,7 +26,9 @@ static int event_epoll_add(struct _fdevent *ev, int fd, int bitadd)
 	
 	memset(&kev.data, 0, sizeof(kev.data));
 
-	kev.data.fd = fd;
+	kev.data.ptr = attach;
+	
+	printf("adding %i\n", fd);
 		
 	if (epoll_ctl(ev->epoll_fd, EPOLL_CTL_ADD, fd, &kev) == -1) {
 		return -1;
@@ -45,9 +48,10 @@ static int event_epoll_poll(struct _fdevent *ev, int timeout_ms)
 	return nfds;
 }
 
-static int event_epoll_get_fd(struct _fdevent *ev, int i)
+static void *event_epoll_get_fd(struct _fdevent *ev, int i)
 {
-	return ev->events[i].data.fd;
+	return ev->events[i].data.ptr;
+	//return ((ape_socket *)ev->events[i].data.ptr)->fd;
 }
 
 static void event_epoll_growup(struct _fdevent *ev)

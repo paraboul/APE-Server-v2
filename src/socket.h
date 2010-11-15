@@ -28,7 +28,7 @@
 #define APE_SOCKET_BACKLOG 2048
 
 /* get a ape_socket pointer from fd number */
-#define APE_SOCKET(fd, ape) ((ape_socket *)ape->events.fds[fd].data)
+#define APE_SOCKET(attach) ((ape_socket *)attach)
 
 #ifdef TCP_CORK
 	#define PACK_TCP(fd) \
@@ -67,6 +67,8 @@ typedef struct {
 } ape_socket_callbacks;
 
 struct _ape_socket {
+	ape_fds s;
+	
 	buffer data_in;
 	buffer data_out;
 	
@@ -76,7 +78,6 @@ struct _ape_socket {
 	} file_out;
 	
 	void *ctx; 	/* public pointer */
-	int fd;
 	ape_socket_callbacks callbacks;
 	ape_socket_type type;
 	ape_socket_proto proto;

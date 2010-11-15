@@ -3,8 +3,9 @@
 
 #include "config.h"
 #include <stdio.h>
+#include <c-ares/ares.h>
 
-#define APE_BASEMEM 512
+#define APE_BASEMEM 4096
 #define __REV "2.0wip"
 
 #define ape_min(val1, val2)  ((val1 > val2) ? (val2) : (val1))
@@ -19,6 +20,7 @@ struct _ape_global {
 	int basemem;
 	void *ctx; /* public */
 	struct _fdevent events;
+	ares_channel dns_channel;
 	int is_running:1;
 };
 

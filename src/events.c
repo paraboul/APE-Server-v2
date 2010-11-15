@@ -5,26 +5,28 @@
 #include <stdlib.h>
 
 
-int events_add(void *fd_data, ape_fds_t type, int bitadd, ape_global *ape)
+int events_add(int fd, void *attach, int bitadd, ape_global *ape)
 {
 	struct _fdevent *ev = &ape->events;
-	int fd;
 
 	
-	switch(type) {
+	/*switch(type) {
+		case APE_DELEGATE:
+			fd = *(int *)fd_data;
+			break;
 		case APE_SOCKET:
 			fd = ((ape_socket *)fd_data)->fd;
 			break;
 		case APE_FILE:
 			break;
-	}
+	}*/
 	
-	if (ev->add(ev, fd, bitadd) == -1) {
+	if (ev->add(ev, fd, bitadd, attach) == -1) {
 		return -1;
 	}
 	
-	ev->fds[fd].data = fd_data;
-	ev->fds[fd].type = type;
+	//ev->fds[fd].data = fd_data;
+	//ev->fds[fd].type = type;
 	
 	return 1;
 }
@@ -41,7 +43,7 @@ inline int events_poll(struct _fdevent *ev, int timeout_ms)
 }
 
 
-inline int events_get_current_fd(struct _fdevent *ev, int i)
+inline void *events_get_current_fd(struct _fdevent *ev, int i)
 {
 	return ev->get_current_fd(ev, i);
 }
@@ -67,9 +69,8 @@ int events_reload(struct _fdevent *ev)
 int events_init(ape_global *ape)
 {
 	ape->events.basemem = &ape->basemem;
-	ape->events.fds = malloc(sizeof(*ape->events.fds) * ape->basemem);
-
-
+	//ape->events.fds = malloc(sizeof(*ape->events.fds) * ape->basemem);
+	
 	switch(ape->events.handler) {
 		case EVENT_EPOLL:
 			return event_epoll_init(&ape->events);
