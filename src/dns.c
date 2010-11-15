@@ -10,13 +10,26 @@
 struct _ape_dns_cb_argv {
 	ape_global *ape;
 	ape_gethostbyname_callback callback;
+	const char *origin;
 };
 
 static void ares_socket_cb(void *data, int s, int read, int write)
 {
 	ape_global *ape = data;
+	int i, f = 0;
 	
-	//events_add(&s, APE_DELEGATE, EVENT_READ|EVENT_WRITE, NULL, ape);
+	for (i = 0; i < ape->dns.sockets.size; i++) {
+		if (!f && ape->dns.sockets.list[i].s.fd == 0) { /* TODO memset with 0 */
+			f = i;
+		} else if (ape->dns.sockets.list[i].s.fd == s) {
+			/* Modify or delete the object (+ return) */
+		}
+	}
+	
+	ape->dns.sockets.list[f].s.fd 	= s;
+	ape->dns.sockets.list[f].s.type = APE_DELEGATE;
+	
+	events_add(s, &ape->dns.sockets.list[f], EVENT_READ|EVENT_WRITE, ape);
 	
 	printf("Socket %i %i %i\n", s, read, write);
 }
@@ -33,16 +46,20 @@ int ape_dns_init(ape_global *ape)
 	opt.sock_state_cb 	= ares_socket_cb;
 	opt.sock_state_cb_data 	= ape;
 	
-	if (ares_init_options(&ape->dns_channel, &opt, 0x00 | ARES_OPT_SOCK_STATE_CB) != ARES_SUCCESS) {
+	if (ares_init_options(&ape->dns.channel, &opt, 0x00 | ARES_OPT_SOCK_STATE_CB) != ARES_SUCCESS) { /* At the moment we only use one dns channel */
 		return -1;
 	}
+	
+	ape->dns.sockets.list 	= malloc(sizeof(struct _ares_sockets) * 32);
+	ape->dns.sockets.size 	= 32;
+	ape->dns.sockets.used	= 0;
 }
 
 void ares_gethostbyname_cb(void *arg, int status, int timeout, struct hostent *host)
 {
 	struct _ape_dns_cb_argv *params = arg;
 	char ret[46];
-	
+
 	if (status == ARES_SUCCESS) {
 		inet_ntop(host->h_addrtype, *host->h_addr_list, ret, sizeof(ret)); /* only return the first h_addr_list element */
 		params->callback(ret);
@@ -61,8 +78,8 @@ void ape_gethostbyname(const char *host, ape_gethostbyname_callback callback, ap
 		struct _ape_dns_cb_argv *cb 	= malloc(sizeof(*cb));
 		cb->ape 			= ape;
 		cb->callback 			= callback;
-
-		ares_gethostbyname(ape->dns_channel, host, AF_INET, ares_gethostbyname_cb, cb);
+		cb->origin			= host;
+		ares_gethostbyname(ape->dns.channel, host, AF_INET, ares_gethostbyname_cb, cb);
 
 	}
 }

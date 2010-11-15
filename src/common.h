@@ -20,7 +20,16 @@ struct _ape_global {
 	int basemem;
 	void *ctx; /* public */
 	struct _fdevent events;
-	ares_channel dns_channel;
+	struct {
+		ares_channel channel;
+		struct {
+			struct _ares_sockets *list;
+			size_t size;
+			size_t used;	
+		} sockets;
+
+	} dns;
+
 	int is_running:1;
 };
 

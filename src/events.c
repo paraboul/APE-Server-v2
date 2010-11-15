@@ -9,25 +9,10 @@ int events_add(int fd, void *attach, int bitadd, ape_global *ape)
 {
 	struct _fdevent *ev = &ape->events;
 
-	
-	/*switch(type) {
-		case APE_DELEGATE:
-			fd = *(int *)fd_data;
-			break;
-		case APE_SOCKET:
-			fd = ((ape_socket *)fd_data)->fd;
-			break;
-		case APE_FILE:
-			break;
-	}*/
-	
 	if (ev->add(ev, fd, bitadd, attach) == -1) {
 		return -1;
 	}
-	
-	//ev->fds[fd].data = fd_data;
-	//ev->fds[fd].type = type;
-	
+
 	return 1;
 }
 

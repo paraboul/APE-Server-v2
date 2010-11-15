@@ -45,11 +45,14 @@ void events_loop(ape_global *ape)
 					break;
 				case APE_SOCKET_UNKNOWN:
 					break;
+				}
+				
 				break;
 			case APE_FILE:
 				break;
 			case APE_DELEGATE:
-				ares_process_fd(ape->dns_channel, (bitev & EVENT_READ ? fd : ARES_SOCKET_BAD), (bitev & EVENT_WRITE ? fd : ARES_SOCKET_BAD));
+				printf("We got something in delegate %i %i\n", fd, bitev);
+				ares_process_fd(ape->dns.channel, (bitev & EVENT_READ ? fd : ARES_SOCKET_BAD), (bitev & EVENT_WRITE ? fd : ARES_SOCKET_BAD));
 				break;
 			}
 		}

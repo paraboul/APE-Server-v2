@@ -27,12 +27,10 @@ uname -v = #1 SMP Thu Sep 30 04:34:30 UTC 2010
 /usr/bin/oslevel       = unknown
 /bin/universe          = unknown
 
-PATH: /usr/local/sbin
 PATH: /usr/local/bin
-PATH: /usr/sbin
 PATH: /usr/bin
-PATH: /sbin
 PATH: /bin
+PATH: /usr/games
 
 
 ## ----------- ##
@@ -286,7 +284,7 @@ configure:5397: $? = 0
 configure:5476: gcc -o conftest    conftest.c  >&5
 configure:5476: $? = 0
 configure:5555: gcc -o conftest    conftest.c  >&5
-/tmp/ccWHPxxP.o: In function `main':
+/tmp/ccQJZdOf.o: In function `main':
 conftest.c:(.text+0x12): undefined reference to `inet_ntoa_r'
 collect2: ld returned 1 exit status
 configure:5555: $? = 1
@@ -862,7 +860,7 @@ configure:16270: $? = 0
 configure:16272: result: yes
 configure:16289: checking for clock_gettime in libraries
 configure:16331: gcc -o conftest -g0 -O2 -Wno-system-headers   conftest.c  >&5
-/tmp/cc4ko8Vn.o: In function `main':
+/tmp/ccUXUODT.o: In function `main':
 conftest.c:(.text+0x20): undefined reference to `clock_gettime'
 collect2: ld returned 1 exit status
 configure:16331: $? = 1
@@ -17616,7 +17614,7 @@ configure:18682: checking for socket.h
 configure:18682: result: no
 configure:18702: checking if closesocket can be linked
 configure:18722: gcc -o conftest -g0 -O2 -Wno-system-headers   conftest.c -lrt >&5
-/tmp/ccwgPJMv.o: In function `main':
+/tmp/ccyn7g9g.o: In function `main':
 conftest.c:(.text+0x19): undefined reference to `closesocket'
 collect2: ld returned 1 exit status
 configure:18722: $? = 1
@@ -17771,7 +17769,7 @@ configure:18817: checking if closesocket might be used
 configure:18832: result: no
 configure:18844: checking if CloseSocket can be linked
 configure:18863: gcc -o conftest -g0 -O2 -Wno-system-headers   conftest.c -lrt >&5
-/tmp/ccm3vQTA.o: In function `main':
+/tmp/ccKbJEhm.o: In function `main':
 conftest.c:(.text+0x19): undefined reference to `CloseSocket'
 collect2: ld returned 1 exit status
 configure:18863: $? = 1
@@ -18478,7 +18476,7 @@ configure:21444: checking if ioctl SIOCGIFADDR might be used
 configure:21448: result: yes
 configure:21475: checking if ioctlsocket can be linked
 configure:21494: gcc -o conftest -g0 -O2 -Wno-system-headers   conftest.c -lrt >&5
-/tmp/ccwMQsmU.o: In function `main':
+/tmp/ccmbT2zI.o: In function `main':
 conftest.c:(.text+0x29): undefined reference to `ioctlsocket'
 collect2: ld returned 1 exit status
 configure:21494: $? = 1
@@ -18663,7 +18661,7 @@ configure:21587: checking if ioctlsocket might be used
 configure:21676: result: no
 configure:21688: checking if IoctlSocket can be linked
 configure:21717: gcc -o conftest -g0 -O2 -Wno-system-headers   conftest.c -lrt >&5
-/tmp/cc4XeBU1.o: In function `main':
+/tmp/ccq5LrPO.o: In function `main':
 conftest.c:(.text+0x12): undefined reference to `IoctlSocket'
 collect2: ld returned 1 exit status
 configure:21717: $? = 1
@@ -19082,7 +19080,7 @@ configure:22394: checking if strcasecmp might be used
 configure:22400: result: yes
 configure:22421: checking if strcmpi can be linked
 configure:22450: gcc -o conftest -g0 -O2 -Wno-system-headers   conftest.c -lrt >&5
-/tmp/ccoEzSTf.o: In function `main':
+/tmp/cc2B8smm.o: In function `main':
 conftest.c:(.text+0x12): undefined reference to `strcmpi'
 collect2: ld returned 1 exit status
 configure:22450: $? = 1
@@ -19281,7 +19279,7 @@ configure:22692: checking if strdup might be used
 configure:22698: result: yes
 configure:22719: checking if stricmp can be linked
 configure:22748: gcc -o conftest -g0 -O2 -Wno-system-headers   conftest.c -lrt >&5
-/tmp/cc4uOCyu.o: In function `main':
+/tmp/ccWY1Ikj.o: In function `main':
 conftest.c:(.text+0x12): undefined reference to `stricmp'
 collect2: ld returned 1 exit status
 configure:22748: $? = 1
@@ -19481,7 +19479,7 @@ configure:22990: checking if strncasecmp might be used
 configure:22996: result: yes
 configure:23017: checking if strncmpi can be linked
 configure:23046: gcc -o conftest -g0 -O2 -Wno-system-headers   conftest.c -lrt >&5
-/tmp/cc2ISWeM.o: In function `main':
+/tmp/ccYIM8yt.o: In function `main':
 conftest.c:(.text+0x12): undefined reference to `strncmpi'
 collect2: ld returned 1 exit status
 configure:23046: $? = 1
@@ -19667,7 +19665,7 @@ configure:23139: checking if strncmpi might be used
 configure:23154: result: no
 configure:23166: checking if strnicmp can be linked
 configure:23195: gcc -o conftest -g0 -O2 -Wno-system-headers   conftest.c -lrt >&5
-/tmp/cc4HElxS.o: In function `main':
+/tmp/ccIaIDSB.o: In function `main':
 conftest.c:(.text+0x12): undefined reference to `strnicmp'
 collect2: ld returned 1 exit status
 configure:23195: $? = 1
@@ -19891,7 +19889,7 @@ configure:23751: $? = 0
 configure:23751: result: yes
 configure:23797: checking for bitncmp
 configure:23797: gcc -o conftest -g0 -O2 -Wno-system-headers   conftest.c -lrt >&5
-/tmp/cceHSy6o.o: In function `main':
+/tmp/ccIqVxtb.o: In function `main':
 conftest.c:(.text+0x12): undefined reference to `bitncmp'
 collect2: ld returned 1 exit status
 configure:23797: $? = 1
@@ -20082,7 +20080,7 @@ configure: failed program was:
 configure:23797: result: no
 configure:23808: checking deeper for bitncmp
 configure:23825: gcc -o conftest -g0 -O2 -Wno-system-headers   conftest.c -lrt >&5
-/tmp/ccGB5JCs.o: In function `main':
+/tmp/ccOtE1Ue.o: In function `main':
 conftest.c:(.text+0x12): undefined reference to `bitncmp'
 collect2: ld returned 1 exit status
 configure:23825: $? = 1
@@ -20271,7 +20269,7 @@ configure:23797: $? = 0
 configure:23797: result: yes
 configure:23852: checking for inet_net_pton
 configure:23852: gcc -o conftest -g0 -O2 -Wno-system-headers   conftest.c -lrt >&5
-/tmp/ccYWdEiO.o: In function `main':
+/tmp/ccIyKzet.o: In function `main':
 conftest.c:(.text+0x12): undefined reference to `inet_net_pton'
 collect2: ld returned 1 exit status
 configure:23852: $? = 1
@@ -27826,28 +27824,7 @@ configure:24653: result: fcntl O_NONBLOCK
 configure:24672: checking whether hiding of library internal symbols will actually happen
 configure:24688: result: yes
 configure:24833: creating ./config.status
-
-## ---------------------- ##
-## Running config.status. ##
-## ---------------------- ##
-
-This file was extended by c-ares config.status 1.7.3, which was
-generated by GNU Autoconf 2.65.  Invocation command line was
-
-  CONFIG_FILES    = 
-  CONFIG_HEADERS  = 
-  CONFIG_LINKS    = 
-  CONFIG_COMMANDS = 
-  $ ./config.status 
-
-on Bohr
-
-config.status:1220: creating Makefile
-config.status:1220: creating libcares.pc
-config.status:1220: creating ares_config.h
-config.status:1220: creating ares_build.h
-config.status:1433: executing depfiles commands
-config.status:1433: executing libtool commands
+configure:26989: error: write failure creating ./config.status
 
 ## ---------------- ##
 ## Cache variables. ##
@@ -28111,7 +28088,7 @@ PACKAGE_STRING='c-ares 1.7.3'
 PACKAGE_TARNAME='c-ares'
 PACKAGE_URL=''
 PACKAGE_VERSION='1.7.3'
-PATH='/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'
+PATH='/usr/local/bin:/usr/bin:/bin:/usr/games'
 PATH_SEPARATOR=':'
 RANDOM_FILE='/dev/urandom'
 RANLIB='ranlib'
@@ -28347,4 +28324,63 @@ target_alias=''
 #define CARES_SYMBOL_HIDING 1
 #define CARES_SYMBOL_SCOPE_EXTERN __attribute__ ((visibility ("default")))
 
-configure: exit 0
+configure: exit 1
+
+## ---------------------- ##
+## Running config.status. ##
+## ---------------------- ##
+
+This file was extended by c-ares config.status 1.7.3, which was
+generated by GNU Autoconf 2.65.  Invocation command line was
+
+  CONFIG_FILES    = 
+  CONFIG_HEADERS  = 
+  CONFIG_LINKS    = 
+  CONFIG_COMMANDS = 
+  $ ./config.status 
+
+on Bohr
+
+config.status:1220: creating Makefile
+config.status:1220: creating libcares.pc
+config.status:1220: creating ares_config.h
+config.status:1386: ares_config.h is unchanged
+config.status:1220: creating ares_build.h
+config.status:1433: executing depfiles commands
+config.status:1433: executing libtool commands
+
+## ---------------------- ##
+## Running config.status. ##
+## ---------------------- ##
+
+This file was extended by c-ares config.status 1.7.3, which was
+generated by GNU Autoconf 2.65.  Invocation command line was
+
+  CONFIG_FILES    = 
+  CONFIG_HEADERS  = 
+  CONFIG_LINKS    = 
+  CONFIG_COMMANDS = 
+  $ ./config.status ares_config.h
+
+on Bohr
+
+config.status:1220: creating ares_config.h
+config.status:1386: ares_config.h is unchanged
+
+## ---------------------- ##
+## Running config.status. ##
+## ---------------------- ##
+
+This file was extended by c-ares config.status 1.7.3, which was
+generated by GNU Autoconf 2.65.  Invocation command line was
+
+  CONFIG_FILES    = 
+  CONFIG_HEADERS  = 
+  CONFIG_LINKS    = 
+  CONFIG_COMMANDS = 
+  $ ./config.status ares_build.h
+
+on Bohr
+
+config.status:1220: creating ares_build.h
+config.status:1386: ares_build.h is unchanged

@@ -27,7 +27,7 @@
 
 #define APE_SOCKET_BACKLOG 2048
 
-/* get a ape_socket pointer from fd number */
+/* get a ape_socket pointer from event returns */
 #define APE_SOCKET(attach) ((ape_socket *)attach)
 
 #ifdef TCP_CORK

@@ -912,7 +912,7 @@ S["PACKAGE_VERSION"]="1.7.3"
 S["PACKAGE_TARNAME"]="c-ares"
 S["PACKAGE_NAME"]="c-ares"
 S["SHELL"]="/bin/bash"
-S["PATH"]="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+S["PATH"]="/usr/local/bin:/usr/bin:/bin:/usr/games"
 S["PATH_SEPARATOR"]=":"
 _ACAWK
 cat >>"$tmp/subs1.awk" <<_ACAWK &&

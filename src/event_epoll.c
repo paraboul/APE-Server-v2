@@ -27,8 +27,7 @@ static int event_epoll_add(struct _fdevent *ev, int fd, int bitadd, void *attach
 	memset(&kev.data, 0, sizeof(kev.data));
 
 	kev.data.ptr = attach;
-	
-	printf("adding %i\n", fd);
+
 		
 	if (epoll_ctl(ev->epoll_fd, EPOLL_CTL_ADD, fd, &kev) == -1) {
 		return -1;
@@ -50,8 +49,7 @@ static int event_epoll_poll(struct _fdevent *ev, int timeout_ms)
 
 static void *event_epoll_get_fd(struct _fdevent *ev, int i)
 {
-	return ev->events[i].data.ptr;
-	//return ((ape_socket *)ev->events[i].data.ptr)->fd;
+	return ev->events[i].data.ptr; /* the value must start by ape_fds */
 }
 
 static void event_epoll_growup(struct _fdevent *ev)
@@ -96,12 +94,12 @@ int event_epoll_init(struct _fdevent *ev)
 
 	ev->events = malloc(sizeof(struct epoll_event) * (*ev->basemem));
 	
-	ev->add = event_epoll_add;
-	ev->poll = event_epoll_poll;
+	ev->add 	= event_epoll_add;
+	ev->poll 	= event_epoll_poll;
 	ev->get_current_fd = event_epoll_get_fd;
-	ev->growup = event_epoll_growup;
-	ev->revent = event_epoll_revent;
-	ev->reload = event_epoll_reload;
+	ev->growup 	= event_epoll_growup;
+	ev->revent 	= event_epoll_revent;
+	ev->reload 	= event_epoll_reload;
 	
 	printf("epoll() started with %i slots\n", *ev->basemem);
 	
