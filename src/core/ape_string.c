@@ -1,4 +1,4 @@
-#include "string.h"
+#include "ape_string.h"
 
 #include <stdlib.h>
 #include <string.h>

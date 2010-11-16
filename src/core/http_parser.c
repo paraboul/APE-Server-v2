@@ -240,6 +240,8 @@ inline int parse_http_char(struct _http_parser *parser, const unsigned char c)
 					parser->callback(parser->ctx, HTTP_PATH_CHAR, '%', parser->step);
 					parser->callback(parser->ctx, HTTP_PATH_CHAR, parser->rx >> 8 /* restor original char */, parser->step);
 					break;
+				default:
+					break;
 				}
 				parser->callback(parser->ctx, HTTP_PATH_CHAR, c, parser->step);
 				parser->state = PT;

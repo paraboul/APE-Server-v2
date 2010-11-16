@@ -1,5 +1,5 @@
-#ifndef __DNS_H_
-#define __DNS_H_
+#ifndef __APE_DNS_H_
+#define __APE_DNS_H_
 
 #include "common.h"
 

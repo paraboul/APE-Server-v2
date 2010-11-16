@@ -1,5 +1,5 @@
-#ifndef __STRING_H_
-#define __STRING_H_
+#ifndef __APE_STRING_H_
+#define __APE_STRING_H_
 
 #include "buffer.h"
 

@@ -7,6 +7,8 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <unistd.h>
+
 #include "socket.h"
 
 #ifdef USE_EPOLL_HANDLER

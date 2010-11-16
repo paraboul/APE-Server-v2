@@ -5,12 +5,14 @@
 
 #include <stdio.h>
 #include <signal.h>
+#include <time.h>
 
 #include "hash.h"
 #include "socket.h"
 #include "events_loop.h"
 #include "server.h"
 #include "dns.h"
+#include "modules.h"
 
 ape_global *ape_init()
 {
@@ -27,16 +29,18 @@ ape_global *ape_init()
 	fdev->handler = EVENT_EPOLL;
 	#endif
 	#ifdef USE_KQUEUE_HANDLER
-	fdev->handler = EVENT_KQUEUE;
+	fdev->handler = EVENT_ KQUEUE;
 	#endif
 	
 	ape->basemem 	= APE_BASEMEM;
 	ape->is_running = 1;
-	
+
 	if (ape_dns_init(ape) != 0) {
 		free(ape);
 		return NULL;
 	}
+	
+	ape->seed = time(NULL) ^ (getpid() << 16);
 	
 	events_init(ape);
 	
@@ -52,7 +56,7 @@ int main(int argc, char **argv)
 {
 	ape_global *ape;
 	uint64_t h;
-	ape_socket *sock;
+
 	int z = 0;
 	
 	if ((ape = ape_init()) == NULL) {
@@ -68,19 +72,26 @@ int main(int argc, char **argv)
 	printf("Build   : %s %s\n", __DATE__, __TIME__);
 	printf("Author  : Anthony Catel (a.catel@weelya.com)\n\n");
 	
-	#if 0
-	h = hash("fop", 3, 0);
 	
-	printf("arch : %llx\n", h);
-	printf("arch : %x\n", h >> 32);
-	printf("Hash : %x\n", 0);
-	#endif
+	h = hash("fop", 3, ape->seed);
+
 	
 	ape_server_init(6969, "127.0.0.1", ape);
 	
+	for(z = 0; ape_modules[z]; z++) {
+		if (ape_modules[z]->ape_module_init(ape) == 0) {
+			printf("[Module] %s loaded\n", ape_modules[z]->name);
+		} else {
+			printf("[Module] Failed to load %s\n", ape_modules[z]->name);
+		}
+	}
+	
+	#if 0	
 	for (z = 0; z < 500; z++) {
 		ape_gethostbyname("lya.eu", dns_cb, ape);
 	}
+	#endif
+
 	
 	events_loop(ape);
 	

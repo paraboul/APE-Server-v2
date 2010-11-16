@@ -1,5 +1,5 @@
-#ifndef __SOCKET_H
-#define __SOCKET_H
+#ifndef __APE_SOCKET_H
+#define __APE_SOCKET_H
 
 #include "common.h"
 #include "buffer.h"

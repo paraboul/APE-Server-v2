@@ -1,5 +1,5 @@
-#ifndef _COMMON_H_
-#define _COMMON_H_
+#ifndef _APE_COMMON_H_
+#define _APE_COMMON_H_
 
 #include "config.h"
 #include <stdio.h>
@@ -13,13 +13,23 @@
 
 typedef struct _ape_global ape_global;
 
+
 #include "events.h"
 
+
+typedef struct _ape_module {
+	char *name;
+	int (*ape_module_init)(ape_global *);
+} ape_module_t;
+
+extern ape_module_t  *ape_modules[];
 
 struct _ape_global {
 	int basemem;
 	void *ctx; /* public */
 	struct _fdevent events;
+	unsigned int seed;
+	
 	struct {
 		ares_channel channel;
 		struct {
@@ -30,7 +40,7 @@ struct _ape_global {
 
 	} dns;
 
-	int is_running:1;
+	int is_running;
 };
 
 

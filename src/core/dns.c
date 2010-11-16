@@ -1,6 +1,8 @@
 #include <c-ares/ares.h>
 #include <netdb.h>
 #include <stdlib.h>
+#include <arpa/inet.h>
+
 #include "common.h"
 #include "dns.h"
 #include "events.h"
@@ -44,7 +46,7 @@ static void ares_socket_cb(void *data, int s, int read, int write)
 int ape_dns_init(ape_global *ape)
 {
 	struct ares_options opt;
-	int optmask = 0;
+	int ret;
 	
 	if (ares_library_init(ARES_LIB_INIT_ALL) != 0) {
 		return -1;
@@ -52,14 +54,16 @@ int ape_dns_init(ape_global *ape)
 	
 	opt.sock_state_cb 	= ares_socket_cb;
 	opt.sock_state_cb_data 	= ape;
-	
-	if (ares_init_options(&ape->dns.channel, &opt, 0x00 | ARES_OPT_SOCK_STATE_CB) != ARES_SUCCESS) { /* At the moment we only use one dns channel */
+
+	if ((ret = ares_init_options(&ape->dns.channel, &opt, 0x00 | ARES_OPT_SOCK_STATE_CB)) != ARES_SUCCESS) { /* At the moment we only use one dns channel */
+
 		return -1;
 	}
-	
 	ape->dns.sockets.list 	= calloc(32, sizeof(struct _ares_sockets) * 32);
 	ape->dns.sockets.size 	= 32;
 	ape->dns.sockets.used	= 0;
+	
+	return 0;
 }
 
 void ares_gethostbyname_cb(void *arg, int status, int timeout, struct hostent *host)

@@ -9,6 +9,7 @@
 
 #include <stdint.h>
 #include <stdio.h>
+#include <sys/time.h>
 
 #ifdef __LP64__
 static uint64_t MurmurHash64A ( const void * key, int len, unsigned int seed )
@@ -117,5 +118,14 @@ uint64_t hash(const void *key, int len, unsigned int seed)
 	#else
 		return MurmurHash64B(key, len, seed);
 	#endif
+}
+
+uint64_t uniqid(const char *seed_key, int len)
+{
+	struct timeval tseed;
+	
+	gettimeofday(&tseed, NULL);
+	
+	return hash(seed_key, len, (tseed.tv_sec & 0x00FFFFFF) | tseed.tv_usec);
 }
 

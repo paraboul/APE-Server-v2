@@ -1,5 +1,5 @@
-#ifndef __SERVER_H
-#define __SERVER_H
+#ifndef __APE_SERVER_H
+#define __APE_SERVER_H
 
 #include "common.h"
 #include "socket.h"

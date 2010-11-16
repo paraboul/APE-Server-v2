@@ -1,5 +1,5 @@
-#ifndef __EVENTS_H_
-#define __EVENTS_H_
+#ifndef __APE_EVENTS_H_
+#define __APE_EVENTS_H_
 
 #include "config.h"
 
