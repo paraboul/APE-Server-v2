@@ -36,7 +36,20 @@ void events_loop(ape_global *ape)
 					break;
 				case APE_SOCKET_CLIENT:
 					if (bitev & EVENT_WRITE) {
-						//printf("Write on client\n");
+						if (APE_SOCKET(attach)->state == APE_SOCKET_PROGRESS) {
+							int serror = 0, ret;
+							socklen_t serror_len = sizeof(serror);
+							
+							if ((ret = getsockopt(fd, SOL_SOCKET, SO_ERROR, &serror, &serror_len)) == 0 && 
+								serror == 0) {
+								
+								APE_SOCKET(attach)->state = APE_SOCKET_ONLINE;
+								
+								printf("Success connect\n");
+							} else {
+								printf("Failed to connect\n");
+							}
+						}
 					}
 					if (bitev & EVENT_READ) {
 						ape_socket_read(APE_SOCKET(attach), ape);

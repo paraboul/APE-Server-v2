@@ -7,5 +7,5 @@ APE C API :
 
 Current API :
 
-- ape_socket * APE_socket_new(ape_socket_proto [APE_SOCKET_TCP/APE_SOCKET_UDP])
+- ape_socket * APE_socket_new(ape_socket_proto [APE_SOCKET_TCP/APE_SOCKET_UDP], fd/0)
 - APE_socket_listen(ape_socket *, uint16 port, const char *local_ip, ape_global *)

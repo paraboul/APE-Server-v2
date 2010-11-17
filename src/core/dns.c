@@ -13,6 +13,7 @@ struct _ape_dns_cb_argv {
 	ape_global *ape;
 	ape_gethostbyname_callback callback;
 	const char *origin;
+	void *arg;
 };
 
 
@@ -73,23 +74,27 @@ void ares_gethostbyname_cb(void *arg, int status, int timeout, struct hostent *h
 
 	if (status == ARES_SUCCESS) {
 		inet_ntop(host->h_addrtype, *host->h_addr_list, ret, sizeof(ret)); /* only return the first h_addr_list element */
-		params->callback(ret);
+		params->callback(ret, params->arg, status, params->ape);
+	} else {
+		params->callback(NULL, params->arg, status, params->ape);
 	}
 	
 	free(params);
 }
 
-void ape_gethostbyname(const char *host, ape_gethostbyname_callback callback, ape_global *ape)
+void ape_gethostbyname(const char *host, ape_gethostbyname_callback callback, void *arg, ape_global *ape)
 {
 	struct in_addr addr4;
 	
 	if (inet_pton(AF_INET, host, &addr4) == 1) {
-		callback(host);
+		callback(host, arg, ARES_SUCCESS, ape);
 	} else {
 		struct _ape_dns_cb_argv *cb 	= malloc(sizeof(*cb));
 		cb->ape 			= ape;
 		cb->callback 			= callback;
 		cb->origin			= host;
+		cb->arg				= arg;
+		
 		ares_gethostbyname(ape->dns.channel, host, AF_INET, ares_gethostbyname_cb, cb);
 
 	}

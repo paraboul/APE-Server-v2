@@ -95,11 +95,14 @@ ape_socket *APE_socket_new(ape_socket_proto pt, int from)
 	ret->s.fd 	= sock;
 	ret->s.type	= APE_SOCKET;
 	ret->type 	= APE_SOCKET_UNKNOWN;
+	ret->state	= APE_SOCKET_PENDING;
 	ret->proto	= pt;
 
 	ret->callbacks.on_read 		= NULL;
 	ret->callbacks.on_disconnect 	= NULL;
 	ret->callbacks.on_connect	= NULL;
+	
+	ret->remote_port = 0;
 
 	buffer_init(&ret->data_in);
 	buffer_init(&ret->data_out);
@@ -116,7 +119,7 @@ int APE_socket_listen(ape_socket *socket, uint16_t port, const char *local_ip, a
 	int reuse_addr = 1;
 	
 	if (port == 0 || port > 65535) {
-		return 0;
+		return -1;
 	}	
 	
 	addr.sin_family = AF_INET;
@@ -132,20 +135,59 @@ int APE_socket_listen(ape_socket *socket, uint16_t port, const char *local_ip, a
 		
 		close(socket->s.fd);
 		
-		return 0;
+		return -1;
 	}
 	
-	socket->type = APE_SOCKET_SERVER;
+	socket->type  = APE_SOCKET_SERVER;
+	socket->state = APE_SOCKET_ONLINE;
 	
 	events_add(socket->s.fd, socket, EVENT_READ|EVENT_WRITE, ape);
 	
-	return 1;
+	return 0;
 	
 }
 
-int APE_socket_connect(ape_socket *socket)
+static int ape_socket_connect_ready_to_connect(const char *remote_ip, void *arg, int status, ape_global *ape)
 {
+	ape_socket *socket = arg;
+	struct sockaddr_in addr;
+	
+	if (status != ARES_SUCCESS) {
+		APE_socket_destroy(socket);
+		return -1;
+	}
+	
+	addr.sin_family = AF_INET;
+	addr.sin_port = htons(socket->remote_port);
+	addr.sin_addr.s_addr = inet_addr(remote_ip);
+	memset(&(addr.sin_zero), '\0', 8);	
+	
+	if (connect(socket->s.fd, (struct sockaddr *)&addr, sizeof(struct sockaddr)) == 0 || 
+		errno != EINPROGRESS) {
+		
+		APE_socket_destroy(socket);
+		return -1;
+	}
+	socket->type  = APE_SOCKET_CLIENT;
+	socket->state = APE_SOCKET_PROGRESS;
+	
+	events_add(socket->s.fd, socket, EVENT_READ|EVENT_WRITE, ape);
+	
+	return 0;
+	
+}
 
+int APE_socket_connect(ape_socket *socket, uint16_t port, const char *remote_ip_host, ape_global *ape)
+{
+	if (port == 0 || port > 65535) {
+		APE_socket_destroy(socket);
+		return -1;
+	}
+	
+	socket->remote_port = port;
+	ape_gethostbyname(remote_ip_host, ape_socket_connect_ready_to_connect, socket, ape);
+	
+	return 0;
 }
 
 int APE_socket_destroy(ape_socket *socket)
@@ -169,10 +211,11 @@ inline int ape_socket_accept(ape_socket *socket, ape_global *ape)
 			(struct sockaddr *)&their_addr,
 			(unsigned int *)&sin_size);
 			
-		if (fd == -1) break; /* EAGAIN */
+		if (fd == -1) break; /* EAGAIN ? */
 		
 		client 			= APE_socket_new(socket->proto, fd);
 		client->type 		= APE_SOCKET_CLIENT;
+		client->state		= APE_SOCKET_ONLINE;
 		client->callbacks 	= socket->callbacks; /* clients inherits server callbacks */
 		
 		events_add(client->s.fd, client, EVENT_READ|EVENT_WRITE, ape);
@@ -182,6 +225,8 @@ inline int ape_socket_accept(ape_socket *socket, ape_global *ape)
 		}
 		
 	}
+	
+	return 0;
 }
 
 /* Consume socket buffer */

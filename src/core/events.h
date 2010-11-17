@@ -16,7 +16,7 @@
 #define EVENT_READ 0x01
 #define EVENT_WRITE 0x02
 
-#define _FD_DELEGATE_TPL  \
+#define _APE_FD_DELEGATE_TPL  \
 	ape_fds s; \
 	void (*on_io)(int fd, int ev, ape_global *ape);
 
@@ -41,7 +41,7 @@ typedef struct { /* Do not store this. Address may changes */
 } ape_fds;
 
 struct _ape_fd_delegate {
-	_FD_DELEGATE_TPL
+	_APE_FD_DELEGATE_TPL
 };
 
 struct _fdevent {

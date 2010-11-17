@@ -5,8 +5,9 @@
 #include <sys/inotify.h>
 
 struct _inotify_sockets {
-	_FD_DELEGATE_TPL
+	_APE_FD_DELEGATE_TPL
 } insocket; /* /!\ not reentrant */
+
 
 static void inotify_io(int fd, int ev, ape_global *ape)
 {
@@ -24,8 +25,11 @@ static void inotify_io(int fd, int ev, ape_global *ape)
 	} while(cread > 0);
 	
 	for (cread = 0; cread < nread;) {
-		struct inotify_event *cevent = ievent+cread; /* cevent contain a inotify_struct */
-		cread += sizeof(struct inotify_event)+cevent->len;
+ 		/* jump to the next element */	
+		struct inotify_event *cevent = ievent + cread;
+		
+		/* the size of the last member (name) depends on 'len' */
+		cread += sizeof(struct inotify_event) + cevent->len;
 	}
 	
 	free(ievent);

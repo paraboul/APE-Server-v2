@@ -58,6 +58,7 @@ int main(int argc, char **argv)
 	uint64_t h;
 
 	int z = 0;
+
 	
 	if ((ape = ape_init()) == NULL) {
 		printf("Failed to init APE\n");
@@ -91,7 +92,7 @@ int main(int argc, char **argv)
 		ape_gethostbyname("lya.eu", dns_cb, ape);
 	}
 	#endif
-
+	
 	
 	events_loop(ape);
 	
