@@ -71,8 +71,6 @@ APE_JS_NATIVE(ape_native_socket_constructor)
 	jsval vp;
 	ape_socket *socket;
 
-	JS_DefineFunctions(cx, obj, default_events);
-	JS_DefineFunctions(cx, obj, socket_funcs);
 	
 	socket 		= APE_socket_new(APE_SOCKET_TCP, 0);
 	socket->ctx 	= obj; /* obj can be gc collected */
@@ -96,7 +94,11 @@ static void JS_InitAPEClasses(JSContext *cx)
 {
 	JSObject *gbl = JS_GetGlobalObject(cx);
 	JSObject *sockserver;
-	
+/*
+
+	JS_DefineFunctions(cx, obj, default_events);
+	JS_DefineFunctions(cx, obj, socket_funcs);
+*/	
 	JS_InitClass(cx, gbl, NULL, &socket_class, ape_native_socket_constructor, 0, NULL, NULL, NULL, NULL);
 	
 }

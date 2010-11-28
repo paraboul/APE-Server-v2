@@ -97,6 +97,7 @@ typedef enum actions {
 	EB = -13, /* second digit in % path */
 	PC = -14, /* path char */
 	EH = -15, /* end of headers */
+	QS = -16, /* query string */
 } parser_actions;
 
 
@@ -112,7 +113,7 @@ static int state_transition_table[NR_STATES][NR_CLASSES] = {
 /*POS             P2*/ {__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,P3,__,__,__},
 /*POST            P3*/ {__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,P4,__,__,__,__,__,__,__},
 /*POST            P4*/ {__,MP,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__},
-/* path	          PT*/ {__,PE,__,__,__,__,__,__,__,PC,PC,PC,PC,__,E1,PC,PC,__,PC,PC,PC,PC,PC,PC,PC,PC,PC,PC,PC},
+/* path	          PT*/ {__,H1,__,__,__,__,__,__,__,PC,PC,PC,PC,QS,E1,PC,PC,__,PC,PC,PC,PC,PC,PC,PC,PC,PC,PC,PC},
 /*H 	          H1*/ {__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,H2,__,__,__,__,__},
 /*HT	          H2*/ {__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,H3,__,__,__,__,__,__,__},
 /*HTT	          H3*/ {__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,H4,__,__,__,__,__,__,__},
@@ -142,8 +143,8 @@ static int state_transition_table[NR_STATES][NR_CLASSES] = {
 /*Content-length: CF*/ {__,__,__,__,__,CG,__,__,__,__,__,HK,__,__,__,__,HK,__,HK,HK,HK,HK,HK,HK,HK,HK,HK,HK,HK},
 /*Content-length: CG*/ {__,KC,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__},
 /* CL value       CV*/ {__,__,__,VE,VE,__,__,__,__,__,__,__,__,__,__,VC,__,__,__,__,__,__,__,__,__,__,__,__,__},
-/* 		  E1*/ {__,PE,__,__,__,__,__,__,__,PC,PC,PC,PC,__,PC,EA,PC,__,EA,EA,PC,PC,PC,PC,PC,PC,EA,PC,PC},
-/* 		  E2*/ {__,PE,__,__,__,__,__,__,__,PC,PC,PC,PC,__,PC,EB,PC,__,EB,EB,PC,PC,PC,PC,PC,PC,EB,PC,PC},
+/* 		  E1*/ {__,H1,__,__,__,__,__,__,__,PC,PC,PC,PC,__,PC,EA,PC,__,EA,EA,PC,PC,PC,PC,PC,PC,EA,PC,PC},
+/* 		  E2*/ {__,H1,__,__,__,__,__,__,__,PC,PC,PC,PC,__,PC,EB,PC,__,EB,EB,PC,PC,PC,PC,PC,PC,EB,PC,PC},
 /* 		  FI*/ {__,__,__,__,EH,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__},
 };
 
@@ -173,10 +174,6 @@ inline int parse_http_char(struct _http_parser *parser, const unsigned char c)
 			case MP:
 				parser->callback(parser->ctx, HTTP_METHOD, HTTP_POST, parser->step);
 				parser->state = PT;
-				break;
-			case PE: /* End of path */
-				parser->callback(parser->ctx, HTTP_PATH_END, 0, parser->step);
-				parser->state = H1;
 				break;
 			case HA: /* HTTP Major */
 				parser->callback(parser->ctx, HTTP_VERSION_MAJOR, c-'0', parser->step);
@@ -212,9 +209,9 @@ inline int parse_http_char(struct _http_parser *parser, const unsigned char c)
 				ch = (unsigned char) (c | 0x20); /* tolower */
 				
 				if (ch >= '0' && ch <= '9') {
-					parser->rx = (unsigned char)(ch - '0') | (c << 8); /* convert to int and store the original char to 0xXXFF */
+					parser->rx = ((unsigned char)(ch - '0') | (c << 8)) | (HTTP_ISQS ? 1 << 28:0); /* convert to int and store the original char to 0xXXFF */
 				} else if (ch >= 'a' && ch <= 'f') {
-					parser->rx = (unsigned char)(ch - 'a' + 10) | (c << 8);
+					parser->rx = (unsigned char)(ch - 'a' + 10) | (c << 8) | (HTTP_ISQS ? 1 << 28:0);
 				}
 				parser->state = E2;
 				break;
@@ -222,35 +219,39 @@ inline int parse_http_char(struct _http_parser *parser, const unsigned char c)
 				ch = (unsigned char) (c | 0x20); /* tolower */
 				
 				if (ch >= '0' && ch <= '9') {
-					ch = (unsigned char) (((parser->rx & 0x00ff /* mask the original char */) << 4) + ch - '0');
+					ch = (unsigned char) (((parser->rx & 0x000000ff /* mask the original char */) << 4) + ch - '0');
 				} else if (ch >= 'a' && ch <= 'f') {
-					ch = (unsigned char) (((parser->rx & 0x00ff) << 4) + ch - 'a' + 10);
+					ch = (unsigned char) (((parser->rx & 0x000000ff) << 4) + ch - 'a' + 10);
 				}
 				
-				parser->callback(parser->ctx, HTTP_PATH_CHAR, ch, parser->step); /* return the decoded char */
+				parser->callback(parser->ctx, HTTP_PATHORQS, ch, parser->step); /* return the decoded char */
 				parser->state = PT;
 				break;
 			case PC:
+			case QS:
 				switch(parser->state) {
 				case E1:
-					parser->callback(parser->ctx, HTTP_PATH_CHAR, '%', parser->step);
-					parser->rx = 0;
+					parser->callback(parser->ctx, HTTP_PATHORQS, '%', parser->step);
+					parser->rx &= 0xF0000000;
 					break;
 				case E2:
-					parser->callback(parser->ctx, HTTP_PATH_CHAR, '%', parser->step);
-					parser->callback(parser->ctx, HTTP_PATH_CHAR, parser->rx >> 8 /* restor original char */, parser->step);
+					parser->callback(parser->ctx, HTTP_PATHORQS, '%', parser->step);
+					parser->callback(parser->ctx, HTTP_PATHORQS, parser->rx >> 8 /* restor original char */, parser->step);
 					break;
 				default:
 					break;
 				}
-				parser->callback(parser->ctx, HTTP_PATH_CHAR, c, parser->step);
 				parser->state = PT;
+				if (state == QS) {
+					parser->rx |= 1 << 28;
+					break;
+				}
+				parser->callback(parser->ctx, HTTP_PATHORQS, c, parser->step);
 				break;
 			case EH:
 				parser->callback(parser->ctx, HTTP_HEADER_END, 0, parser->step);
 				break;
 			default:
-				printf("wtf %i\n", state);
 				return 0;
 		}
 

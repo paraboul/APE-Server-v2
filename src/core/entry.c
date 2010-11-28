@@ -47,19 +47,13 @@ ape_global *ape_init()
 	return ape;
 }
 
-int dns_cb(const char *ip)
-{
-	printf("Callback : %s\n", ip);
-}
 
 int main(int argc, char **argv)
 {
 	ape_global *ape;
 	uint64_t h;
+	int z;
 
-	int z = 0;
-
-	
 	if ((ape = ape_init()) == NULL) {
 		printf("Failed to init APE\n");
 		exit(1);
@@ -75,7 +69,6 @@ int main(int argc, char **argv)
 	
 	
 	h = hash("fop", 3, ape->seed);
-
 	
 	ape_server_init(6969, "127.0.0.1", ape);
 	
@@ -85,14 +78,7 @@ int main(int argc, char **argv)
 		} else {
 			printf("[Module] Failed to load %s\n", ape_modules[z]->name);
 		}
-	}
-	
-	#if 0	
-	for (z = 0; z < 500; z++) {
-		ape_gethostbyname("lya.eu", dns_cb, ape);
-	}
-	#endif
-	
+	}	
 	
 	events_loop(ape);
 	

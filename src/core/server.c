@@ -17,15 +17,16 @@ static int ape_http_callback(void *ctx, callback_type type, int value, uint32_t 
 			}
 			client->http.path = buffer_new(128);
 			break;
-		case HTTP_PATH_END:
-			buffer_append_char(client->http.path, '\0');
-			//printf("Path : %s\n", client->http.path->data);
-			break;
 		case HTTP_PATH_CHAR:
+			printf("Path %c\n", (unsigned char)value);
 			buffer_append_char(client->http.path, (unsigned char)value);
+			break;
+		case HTTP_QS_CHAR:
+			printf("QS %c\n", (unsigned char)value);
 			break;
 		case HTTP_VERSION_MAJOR:
 		case HTTP_VERSION_MINOR:
+			buffer_append_char(client->http.path, '\0');
 		//	printf("Version detected %i\n", value);
 			break;
 		case HTTP_HEADER_KEY:
@@ -39,7 +40,7 @@ static int ape_http_callback(void *ctx, callback_type type, int value, uint32_t 
 			break;
 		case HTTP_HEADER_END:
 		//	printf("--------- HEADERS END ---------\n");
-			ape_socket_write_file(client->socket, client->http.path->data, NULL);
+			//ape_socket_write_file(client->socket, client->http.path->data, NULL);
 			break;
 		default:
 			break;

@@ -68,13 +68,13 @@ typedef enum
 } JSON_type;
 
 typedef struct JSON_value_struct {
-    struct {
+    struct/*union*/ { /* Anthony Catel : using struct instead of union */
         JSON_int_t integer_value;
         
         double float_value;
         
         struct {
-            const char* value;
+            char* value;
             size_t length;
         } str;
     } vu;
