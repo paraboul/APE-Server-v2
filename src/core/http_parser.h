@@ -83,8 +83,6 @@ typedef enum methods {
 
 int parse_http_char(struct _http_parser *parser, const unsigned char c);
 
-#define HTTP_PATHORQS (parser->rx & 0xFF000000 ? HTTP_QS_CHAR : HTTP_PATH_CHAR)
-#define HTTP_ISQS (parser->rx & 0xFF000000)
 
 #define HTTP_PARSER_RESET(p) \
 	do { \

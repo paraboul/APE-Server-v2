@@ -1,6 +1,31 @@
 #include "server.h"
 #include "http_parser.h"
 
+
+static ape_transport_t ape_get_transport(buffer *path)
+{
+	int i;
+	
+	if (path->data == NULL || *path->data == '\0' || *path->data != '/') {
+		return APE_TRANSPORT_NU;
+	}
+	
+	for (i = 0; ape_transports_s[i].type != APE_TRANSPORT_NU; i++) {
+		if (path->used - 1 < ape_transports_s[i].len) continue;
+		
+		if (ape_transports_s[i].len == 3 &&
+			(*(uint32_t *)path->data & 0x00FFFFFF) == *(uint32_t *)ape_transports_s[i].path) {
+
+			return ape_transports_s[i].type;
+		} else if (ape_transports_s[i].len > 3 &&
+			strncmp(path->data, ape_transports_s[i].path, ape_transports_s[i].len) == 0) {
+			return ape_transports_s[i].type;
+		}
+	}
+	
+	return APE_TRANSPORT_NU;
+}
+
 static int ape_http_callback(void *ctx, callback_type type, int value, uint32_t step)
 {
 	ape_client *client = (ape_client *)ctx;
@@ -15,7 +40,7 @@ static int ape_http_callback(void *ctx, callback_type type, int value, uint32_t 
 					client->http.method = HTTP_POST;
 					break;
 			}
-			client->http.path = buffer_new(128);
+			client->http.path = buffer_new(32);
 			break;
 		case HTTP_PATH_CHAR:
 			printf("Path %c\n", (unsigned char)value);
@@ -24,9 +49,11 @@ static int ape_http_callback(void *ctx, callback_type type, int value, uint32_t 
 		case HTTP_QS_CHAR:
 			printf("QS %c\n", (unsigned char)value);
 			break;
-		case HTTP_VERSION_MAJOR:
 		case HTTP_VERSION_MINOR:
 			buffer_append_char(client->http.path, '\0');
+			client->http.transport = ape_get_transport(client->http.path);
+			/* fall through */
+		case HTTP_VERSION_MAJOR:
 		//	printf("Version detected %i\n", value);
 			break;
 		case HTTP_HEADER_KEY:
@@ -67,6 +94,7 @@ static void ape_server_on_connect(ape_socket *socket_client, ape_global *ape)
 	
 	client 		= malloc(sizeof(*client)); /* setup the client struct */
 	client->socket	= socket_client;
+
 	
 	socket_client->ctx = client; /* link the socket to the client struct */
 	
@@ -75,7 +103,7 @@ static void ape_server_on_connect(ape_socket *socket_client, ape_global *ape)
 	client->http.parser.callback 	= ape_http_callback;
 	client->http.parser.ctx 	= client;
 	client->http.method		= HTTP_GET;
-	
+	client->http.transport		= APE_TRANSPORT_NU;
 	client->http.path		= NULL;
 
 }

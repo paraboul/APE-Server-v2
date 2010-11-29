@@ -99,6 +99,8 @@ static void JS_InitAPEClasses(JSContext *cx)
 	JS_DefineFunctions(cx, obj, default_events);
 	JS_DefineFunctions(cx, obj, socket_funcs);
 */	
+
+	/*TODO: Make all APE function prototype of an evented object*/
 	JS_InitClass(cx, gbl, NULL, &socket_class, ape_native_socket_constructor, 0, NULL, NULL, NULL, NULL);
 	
 }

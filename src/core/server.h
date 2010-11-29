@@ -5,6 +5,7 @@
 #include "socket.h"
 #include "http_parser.h"
 #include "buffer.h"
+#include "ape_transports.h"
 
 #define APE_CLIENT(socket) ((ape_client *)socket->ctx)
 
@@ -14,7 +15,9 @@ typedef struct {
 	struct {
 		http_parser parser;
 		http_method_t method;
+		ape_transport_t transport;
 		buffer *path;
+		buffer *qs;
 	} http;
 } ape_client;
 

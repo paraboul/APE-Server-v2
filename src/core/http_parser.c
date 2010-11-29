@@ -151,6 +151,9 @@ static int state_transition_table[NR_STATES][NR_CLASSES] = {
 /* compiled as jump table by gcc */
 inline int parse_http_char(struct _http_parser *parser, const unsigned char c)
 {
+
+#define HTTP_PATHORQS (parser->rx & 0xFF000000 ? HTTP_QS_CHAR : HTTP_PATH_CHAR)
+#define HTTP_ISQS (parser->rx & 0xFF000000)
 	
 	parser_class c_classe = ascii_class[c];
 	int8_t state;
