@@ -80,6 +80,8 @@ int main(int argc, char **argv)
 		}
 	}
 	
+	printf("Base %d %d\n", 'Z', 'a');
+	
 	events_loop(ape);
 	
 	return 0;

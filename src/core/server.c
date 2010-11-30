@@ -43,12 +43,12 @@ static int ape_http_callback(void *ctx, callback_type type, int value, uint32_t 
 			client->http.path = buffer_new(32);
 			break;
 		case HTTP_PATH_CHAR:
-			printf("Path %c\n", (unsigned char)value);
 			buffer_append_char(client->http.path, (unsigned char)value);
 			break;
 		case HTTP_QS_CHAR:
 			printf("QS %c\n", (unsigned char)value);
-			if (APE_TRANSPORT_QS_ISJSON(client->http.transport) && 
+			if (client->http.method == HTTP_GET && 
+				APE_TRANSPORT_QS_ISJSON(client->http.transport) && 
 				client->json.parser != NULL) {
 				
 				if (!JSON_parser_char(client->json.parser, (unsigned char)value)) {
@@ -58,6 +58,14 @@ static int ape_http_callback(void *ctx, callback_type type, int value, uint32_t 
 				
 				/* bufferize */
 			}
+			break;
+		case HTTP_BODY_CHAR:
+			if (APE_TRANSPORT_QS_ISJSON(client->http.transport) && 
+				client->json.parser != NULL) {
+				if (!JSON_parser_char(client->json.parser, (unsigned char)value)) {
+					printf("Bad JSON\n");
+				}
+			} 
 			break;
 		case HTTP_PATH_END:
 			buffer_append_char(client->http.path, '\0');

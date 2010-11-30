@@ -9,12 +9,14 @@ typedef enum type {
 	HTTP_PATH_CHAR,
 	HTTP_PATH_END,
 	HTTP_QS_CHAR,
+	HTTP_BODY_CHAR,
 	HTTP_VERSION_MAJOR,
 	HTTP_VERSION_MINOR,
 	HTTP_HEADER_KEY,
 	HTTP_HEADER_VAL,
 	HTTP_CL_VAL,
-	HTTP_HEADER_END
+	HTTP_HEADER_END,
+	HTTP_READY,
 } callback_type;
 
 
@@ -68,7 +70,7 @@ typedef int (*HTTP_parser_callback)(void* ctx, callback_type type, int value, ui
 typedef struct _http_parser {
 	HTTP_parser_callback callback;  /* user callback function */
 	void *ctx; 			/* user defined */
-	uint32_t rx;			/* register (32bit) (pass through states) */
+	uint32_t rx;			/* flag (32bit) (pass through states) */
 	uint32_t step; 			/* char number */
 	uint64_t cl; 			/* content-length */ /* TODO : store cl in rx */
 	parser_state state; 		/* state */

@@ -76,9 +76,9 @@ static int ascii_class[128] = {
 	C_P,   	 C_ETC,   C_ETC,   C_S,     C_T,     C_ETC,   C_ETC,   C_ETC,
 	C_ETC,   C_ETC,   C_ETC,   C_ETC,   C_BACKS, C_ETC,   C_ETC,   C_ETC,
 	
-	C_ETC,   C_ETC,   C_ETC,   C_ETC,   C_ETC,   C_ETC,   C_ETC,   C_ETC,
-	C_ETC,   C_ETC,   C_ETC,   C_ETC,   C_ETC,   C_ETC,   C_ETC,   C_ETC,
-	C_ETC,   C_ETC,   C_ETC,   C_ETC,   C_ETC,   C_ETC,   C_ETC,   C_ETC,
+	C_ETC,   C_ABDF,  C_ABDF,  C_C,     C_ABDF,  C_E,     C_ABDF,  C_G,
+	C_H,     C_ETC,   C_ETC,   C_ETC,   C_L,     C_ETC,   C_N,     C_O,
+	C_P,   	 C_ETC,   C_ETC,   C_S,     C_T,     C_ETC,   C_ETC,   C_ETC,
 	C_ETC,   C_ETC,   C_ETC,   C_ETC,   C_ETC,   C_ETC,   C_ETC,   C_NUL
 };
 
@@ -98,6 +98,7 @@ typedef enum actions {
 	PC = -14, /* path char */
 	EH = -15, /* end of headers */
 	QS = -16, /* query string */
+	BC = -17, /* body char */
 } parser_actions;
 
 
@@ -145,15 +146,17 @@ static int state_transition_table[NR_STATES][NR_CLASSES] = {
 /* CL value       CV*/ {__,__,__,VE,VE,__,__,__,__,__,__,__,__,__,__,VC,__,__,__,__,__,__,__,__,__,__,__,__,__},
 /* 		  E1*/ {__,H1,__,__,__,__,__,__,__,PC,PC,PC,PC,__,PC,EA,PC,__,EA,EA,PC,PC,PC,PC,PC,PC,EA,PC,PC},
 /* 		  E2*/ {__,H1,__,__,__,__,__,__,__,PC,PC,PC,PC,__,PC,EB,PC,__,EB,EB,PC,PC,PC,PC,PC,PC,EB,PC,PC},
-/* 		  FI*/ {__,__,__,__,EH,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__},
+/* 		  FI*/ {__,__,__,__,EH,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__}
 };
 
 /* compiled as jump table by gcc */
 inline int parse_http_char(struct _http_parser *parser, const unsigned char c)
 {
 
-#define HTTP_PATHORQS (parser->rx & 0xFF000000 ? HTTP_QS_CHAR : HTTP_PATH_CHAR)
-#define HTTP_ISQS() (parser->rx & 0xFF000000)
+#define HTTP_PATHORQS (parser->rx & 0xF0000000 ? (parser->rx & 0x00F00000 ? HTTP_BODY_CHAR : HTTP_QS_CHAR) : HTTP_PATH_CHAR)
+#define HTTP_ISQS() (parser->rx & 0xF0000000)
+#define HTTP_ISPOST() (parser->rx & 0x0F000000)
+#define HTTP_ISBODYCONTENT() (parser->rx & 0x00F00000)
 	
 	parser_class c_classe = ascii_class[c];
 	int8_t state;
@@ -176,6 +179,7 @@ inline int parse_http_char(struct _http_parser *parser, const unsigned char c)
 				break;
 			case MP:
 				parser->callback(parser->ctx, HTTP_METHOD, HTTP_POST, parser->step);
+				parser->rx |= 1 << 24;
 				parser->state = PT;
 				break;
 			case HA: /* HTTP Major */
@@ -212,9 +216,9 @@ inline int parse_http_char(struct _http_parser *parser, const unsigned char c)
 				ch = (unsigned char) (c | 0x20); /* tolower */
 				
 				if (ch >= '0' && ch <= '9') {
-					parser->rx = ((unsigned char)(ch - '0') | (c << 8)) | (HTTP_ISQS() ? 1 << 28:0); /* convert to int and store the original char to 0xXXFF */
+					parser->rx |= (unsigned char)(ch - '0') | (c << 8); /* convert to int and store the original char to 0xXXFF */
 				} else if (ch >= 'a' && ch <= 'f') {
-					parser->rx = (unsigned char)(ch - 'a' + 10) | (c << 8) | (HTTP_ISQS() ? 1 << 28:0);
+					parser->rx |= (unsigned char)(ch - 'a' + 10) | (c << 8);
 				}
 				parser->state = E2;
 				break;
@@ -230,12 +234,13 @@ inline int parse_http_char(struct _http_parser *parser, const unsigned char c)
 				parser->callback(parser->ctx, HTTP_PATHORQS, ch, parser->step); /* return the decoded char */
 				parser->state = PT;
 				break;
-			case PC:
+			case PC: PC:
 			case QS:
+			case BC:
 				switch(parser->state) {
 				case E1:
 					parser->callback(parser->ctx, HTTP_PATHORQS, '%', parser->step);
-					parser->rx &= 0xF0000000;
+					parser->rx &= 0xFFF00000;
 					break;
 				case E2:
 					parser->callback(parser->ctx, HTTP_PATHORQS, '%', parser->step);
@@ -252,14 +257,24 @@ inline int parse_http_char(struct _http_parser *parser, const unsigned char c)
 				}
 				parser->callback(parser->ctx, HTTP_PATHORQS, c, parser->step);
 				break;
-			case EH:
-				parser->callback(parser->ctx, HTTP_HEADER_END, 0, parser->step);
-				break;
 			case PE:
 				if (!HTTP_ISQS()) {
 					parser->callback(parser->ctx, HTTP_PATH_END, 0, parser->step);
+				} else if (HTTP_ISBODYCONTENT()) {
+					parser->state = PC;
+					goto PC;
 				}
 				parser->state = H1;
+				
+				break;
+			case EH:
+				parser->callback(parser->ctx, HTTP_HEADER_END, 0, parser->step);
+				if (HTTP_ISPOST()) {
+					parser->state = PT;
+					parser->rx = 0x11100000;
+					break;
+				}
+				parser->callback(parser->ctx, HTTP_READY, 0, parser->step);
 				break;
 			default:
 				return 0;
