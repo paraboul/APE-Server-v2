@@ -7,6 +7,7 @@ typedef enum type {
 	HTTP_PARSE_ERROR,
 	HTTP_METHOD,
 	HTTP_PATH_CHAR,
+	HTTP_PATH_END,
 	HTTP_QS_CHAR,
 	HTTP_VERSION_MAJOR,
 	HTTP_VERSION_MINOR,
@@ -90,6 +91,8 @@ int parse_http_char(struct _http_parser *parser, const unsigned char c);
 		(p)->step 	= 0; \
 		(p)->cl	= 0; \
 		(p)->callback = NULL; \
+		(p)->rx = 0; \
+		(p)->ctx = NULL; \
 	} while(0) \
 
 #endif

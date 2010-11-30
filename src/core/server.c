@@ -1,6 +1,6 @@
 #include "server.h"
 #include "http_parser.h"
-
+#include "JSON_parser.h"
 
 static ape_transport_t ape_get_transport(buffer *path)
 {
@@ -48,10 +48,35 @@ static int ape_http_callback(void *ctx, callback_type type, int value, uint32_t 
 			break;
 		case HTTP_QS_CHAR:
 			printf("QS %c\n", (unsigned char)value);
+			if (APE_TRANSPORT_QS_ISJSON(client->http.transport) && 
+				client->json.parser != NULL) {
+				
+				if (!JSON_parser_char(client->json.parser, (unsigned char)value)) {
+					printf("Bad JSON\n");
+				}
+			} else {
+				
+				/* bufferize */
+			}
 			break;
-		case HTTP_VERSION_MINOR:
+		case HTTP_PATH_END:
 			buffer_append_char(client->http.path, '\0');
 			client->http.transport = ape_get_transport(client->http.path);
+			
+			if (APE_TRANSPORT_QS_ISJSON(client->http.transport)) {
+				JSON_config config;
+				init_JSON_config(&config);
+				config.depth		= 15;
+				config.callback		= NULL;
+				config.callback_ctx	= NULL;
+				config.allow_comments	= 0;
+				config.handle_floats_manually = 0;
+			
+				client->json.parser = new_JSON_parser(&config);				
+			}
+			break;
+		case HTTP_VERSION_MINOR:		
+			
 			/* fall through */
 		case HTTP_VERSION_MAJOR:
 		//	printf("Version detected %i\n", value);
@@ -105,6 +130,8 @@ static void ape_server_on_connect(ape_socket *socket_client, ape_global *ape)
 	client->http.method		= HTTP_GET;
 	client->http.transport		= APE_TRANSPORT_NU;
 	client->http.path		= NULL;
+	
+	client->json.parser = NULL;
 
 }
 

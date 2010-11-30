@@ -113,7 +113,7 @@ static int state_transition_table[NR_STATES][NR_CLASSES] = {
 /*POS             P2*/ {__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,P3,__,__,__},
 /*POST            P3*/ {__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,P4,__,__,__,__,__,__,__},
 /*POST            P4*/ {__,MP,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__},
-/* path	          PT*/ {__,H1,__,__,__,__,__,__,__,PC,PC,PC,PC,QS,E1,PC,PC,__,PC,PC,PC,PC,PC,PC,PC,PC,PC,PC,PC},
+/* path	          PT*/ {__,PE,__,__,__,__,__,__,__,PC,PC,PC,PC,QS,E1,PC,PC,__,PC,PC,PC,PC,PC,PC,PC,PC,PC,PC,PC},
 /*H 	          H1*/ {__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,H2,__,__,__,__,__},
 /*HT	          H2*/ {__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,H3,__,__,__,__,__,__,__},
 /*HTT	          H3*/ {__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,H4,__,__,__,__,__,__,__},
@@ -153,7 +153,7 @@ inline int parse_http_char(struct _http_parser *parser, const unsigned char c)
 {
 
 #define HTTP_PATHORQS (parser->rx & 0xFF000000 ? HTTP_QS_CHAR : HTTP_PATH_CHAR)
-#define HTTP_ISQS (parser->rx & 0xFF000000)
+#define HTTP_ISQS() (parser->rx & 0xFF000000)
 	
 	parser_class c_classe = ascii_class[c];
 	int8_t state;
@@ -212,9 +212,9 @@ inline int parse_http_char(struct _http_parser *parser, const unsigned char c)
 				ch = (unsigned char) (c | 0x20); /* tolower */
 				
 				if (ch >= '0' && ch <= '9') {
-					parser->rx = ((unsigned char)(ch - '0') | (c << 8)) | (HTTP_ISQS ? 1 << 28:0); /* convert to int and store the original char to 0xXXFF */
+					parser->rx = ((unsigned char)(ch - '0') | (c << 8)) | (HTTP_ISQS() ? 1 << 28:0); /* convert to int and store the original char to 0xXXFF */
 				} else if (ch >= 'a' && ch <= 'f') {
-					parser->rx = (unsigned char)(ch - 'a' + 10) | (c << 8) | (HTTP_ISQS ? 1 << 28:0);
+					parser->rx = (unsigned char)(ch - 'a' + 10) | (c << 8) | (HTTP_ISQS() ? 1 << 28:0);
 				}
 				parser->state = E2;
 				break;
@@ -245,8 +245,9 @@ inline int parse_http_char(struct _http_parser *parser, const unsigned char c)
 					break;
 				}
 				parser->state = PT;
-				if (state == QS) {
+				if (state == QS && !HTTP_ISQS()) {
 					parser->rx |= 1 << 28;
+					parser->callback(parser->ctx, HTTP_PATH_END, 0, parser->step);
 					break;
 				}
 				parser->callback(parser->ctx, HTTP_PATHORQS, c, parser->step);
@@ -254,10 +255,15 @@ inline int parse_http_char(struct _http_parser *parser, const unsigned char c)
 			case EH:
 				parser->callback(parser->ctx, HTTP_HEADER_END, 0, parser->step);
 				break;
+			case PE:
+				if (!HTTP_ISQS()) {
+					parser->callback(parser->ctx, HTTP_PATH_END, 0, parser->step);
+				}
+				parser->state = H1;
+				break;
 			default:
 				return 0;
 		}
-
 	}
 	
 	return 1;

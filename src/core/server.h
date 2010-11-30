@@ -4,6 +4,7 @@
 #include "common.h"
 #include "socket.h"
 #include "http_parser.h"
+#include "JSON_parser.h"
 #include "buffer.h"
 #include "ape_transports.h"
 
@@ -19,6 +20,11 @@ typedef struct {
 		buffer *path;
 		buffer *qs;
 	} http;
+	
+	struct {
+		struct JSON_parser_struct* parser;
+	} json;
+	
 } ape_client;
 
 typedef struct {
