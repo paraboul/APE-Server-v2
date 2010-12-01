@@ -152,11 +152,16 @@ static int state_transition_table[NR_STATES][NR_CLASSES] = {
 /* compiled as jump table by gcc */
 inline int parse_http_char(struct _http_parser *parser, const unsigned char c)
 {
+#define HTTP_FLG_POST (1 << 31)
+#define HTTP_FLG_QS (1 << 30)
+#define HTTP_FLG_BODYCONTENT (1 << 29)
 
-#define HTTP_PATHORQS (parser->rx & 0xF0000000 ? (parser->rx & 0x00F00000 ? HTTP_BODY_CHAR : HTTP_QS_CHAR) : HTTP_PATH_CHAR)
-#define HTTP_ISQS() (parser->rx & 0xF0000000)
-#define HTTP_ISPOST() (parser->rx & 0x0F000000)
-#define HTTP_ISBODYCONTENT() (parser->rx & 0x00F00000)
+
+#define HTTP_ISQS() (parser->rx & HTTP_FLG_QS)
+#define HTTP_ISPOST() (parser->rx & HTTP_FLG_POST)
+#define HTTP_ISBODYCONTENT() (parser->rx & HTTP_FLG_BODYCONTENT)
+
+#define HTTP_PATHORQS (HTTP_ISQS() ? (HTTP_ISBODYCONTENT() ? HTTP_BODY_CHAR : HTTP_QS_CHAR) : HTTP_PATH_CHAR)
 	
 	parser_class c_classe = ascii_class[c];
 	int8_t state;
@@ -179,7 +184,7 @@ inline int parse_http_char(struct _http_parser *parser, const unsigned char c)
 				break;
 			case MP:
 				parser->callback(parser->ctx, HTTP_METHOD, HTTP_POST, parser->step);
-				parser->rx |= 1 << 24;
+				parser->rx |= HTTP_FLG_POST;
 				parser->state = PT;
 				break;
 			case HA: /* HTTP Major */
@@ -240,7 +245,7 @@ inline int parse_http_char(struct _http_parser *parser, const unsigned char c)
 				switch(parser->state) {
 				case E1:
 					parser->callback(parser->ctx, HTTP_PATHORQS, '%', parser->step);
-					parser->rx &= 0xFFF00000;
+					parser->rx &= 0xF0000000;
 					break;
 				case E2:
 					parser->callback(parser->ctx, HTTP_PATHORQS, '%', parser->step);
@@ -251,7 +256,7 @@ inline int parse_http_char(struct _http_parser *parser, const unsigned char c)
 				}
 				parser->state = PT;
 				if (state == QS && !HTTP_ISQS()) {
-					parser->rx |= 1 << 28;
+					parser->rx |= HTTP_FLG_QS;
 					parser->callback(parser->ctx, HTTP_PATH_END, 0, parser->step);
 					break;
 				}
@@ -271,7 +276,7 @@ inline int parse_http_char(struct _http_parser *parser, const unsigned char c)
 				parser->callback(parser->ctx, HTTP_HEADER_END, 0, parser->step);
 				if (HTTP_ISPOST()) {
 					parser->state = PT;
-					parser->rx = 0x11100000;
+					parser->rx = HTTP_FLG_POST | HTTP_FLG_QS | HTTP_FLG_BODYCONTENT;
 					break;
 				}
 				parser->callback(parser->ctx, HTTP_READY, 0, parser->step);

@@ -135,7 +135,7 @@ static int ape_module_jsapi_init(ape_global *ape)
 	
 	int i;
 	
-	if ((rt = JS_NewRuntime(128L * 1024L * 1024L)) == NULL) {
+	if ((rt = JS_NewRuntime(8L * 1024L * 1024L)) == NULL) {
 		return -1;
 	}
 	
