@@ -11,7 +11,7 @@
 
 #define __   -1
 
-#define MAX_CL 1024000
+#define MAX_CL 1048576
 
 /* Todo : check for endieness + aligned */
 #define BYTES_GET(b) \
@@ -51,6 +51,7 @@ typedef enum classes {
 	C_C,	/* C */
 	C_N,	/* N */
 	C_L,	/* L */
+	C_USCORE,/* _ */
 	NR_CLASSES
 } parser_class;
 
@@ -74,7 +75,7 @@ static int ascii_class[128] = {
 	C_ETC,   C_ABDF,  C_ABDF,  C_C,     C_ABDF,  C_E,     C_ABDF,  C_G,
 	C_H,     C_ETC,   C_ETC,   C_ETC,   C_L,     C_ETC,   C_N,     C_O,
 	C_P,   	 C_ETC,   C_ETC,   C_S,     C_T,     C_ETC,   C_ETC,   C_ETC,
-	C_ETC,   C_ETC,   C_ETC,   C_ETC,   C_BACKS, C_ETC,   C_ETC,   C_ETC,
+	C_ETC,   C_ETC,   C_ETC,   C_ETC,   C_BACKS, C_ETC,   C_ETC,   C_USCORE,
 	
 	C_ETC,   C_ABDF,  C_ABDF,  C_C,     C_ABDF,  C_E,     C_ABDF,  C_G,
 	C_H,     C_ETC,   C_ETC,   C_ETC,   C_L,     C_ETC,   C_N,     C_O,
@@ -95,58 +96,61 @@ typedef enum actions {
 	VE = -11, /* content length finish */
 	EA = -12, /* first hex in % path */
 	EB = -13, /* second digit in % path */
-	PC = -14, /* path char */
-	EH = -15, /* end of headers */
-	QS = -16, /* query string */
-	BC = -17, /* body char */
+	EH = -14, /* end of headers */
+	B1 = -15, /* % in body char (unhex start) */
+	BC = -16, /* body char */
+	PC = -17, /* path char */
+	QS = -18, /* query string */
+
 } parser_actions;
 
 
 static int state_transition_table[NR_STATES][NR_CLASSES] = {
 /*  
                        nul   white                                      etc   ABDF       
-                       | space |  \r\n  :  ,  "  \  /  +  -  .  ?  % 09  |  *  | E  G  T  P  H  O  S  C  N  L*/
-/*start           GO*/ {__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,G1,__,P1,__,__,__,__,__,__},
-/*GE              G1*/ {__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,G2,__,__,__,__,__,__,__,__,__},
-/*GET             G2*/ {__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,G3,__,__,__,__,__,__,__},
-/*GET             G3*/ {__,MG,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__},
-/*PO              P1*/ {__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,P2,__,__,__,__},
-/*POS             P2*/ {__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,P3,__,__,__},
-/*POST            P3*/ {__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,P4,__,__,__,__,__,__,__},
-/*POST            P4*/ {__,MP,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__},
-/* path	          PT*/ {__,PE,__,__,__,__,__,__,__,PC,PC,PC,PC,QS,E1,PC,PC,__,PC,PC,PC,PC,PC,PC,PC,PC,PC,PC,PC},
-/*H 	          H1*/ {__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,H2,__,__,__,__,__},
-/*HT	          H2*/ {__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,H3,__,__,__,__,__,__,__},
-/*HTT	          H3*/ {__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,H4,__,__,__,__,__,__,__},
-/*HTTP	          H4*/ {__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,H5,__,__,__,__,__,__},
-/*HTTP/	          H5*/ {__,__,__,__,__,__,__,__,__,H6,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__},
-/*HTTP/[0-9]      H6*/ {__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,HA,__,__,__,__,__,__,__,__,__,__,__,__,__},
-/*HTTP/[0-9]/     H7*/ {__,__,__,__,__,__,__,__,__,__,__,__,H8,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__},
-/*HTTP/[0-9]/[0-9]H8*/ {__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,HB,__,__,__,__,__,__,__,__,__,__,__,__,__},
-/* new line 	  EL*/ {__,__,__,ER,C1,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__},
-/* \r expect \n   ER*/ {__,__,__,__,C1,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__},
-/* header key 	  HK*/ {__,__,__,__,__,KH,__,__,__,__,__,HK,__,__,__,__,HK,__,HK,HK,HK,HK,HK,HK,HK,HK,HK,HK,HK},
-/* header value   HV*/ {__,HV,__,VH,VH,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV},
-/*C               C1*/ {__,__,__,FI,EH,KH,__,__,__,__,__,HK,__,__,__,__,HK,__,HK,HK,HK,HK,HK,HK,HK,HK,C2,HK,HK},
-/*Co              C2*/ {__,__,__,__,__,KH,__,__,__,__,__,HK,__,__,__,__,HK,__,HK,HK,HK,HK,HK,HK,C3,HK,HK,HK,HK},
-/*Con             C3*/ {__,__,__,__,__,KH,__,__,__,__,__,HK,__,__,__,__,HK,__,HK,HK,HK,HK,HK,HK,HK,HK,HK,C4,HK},
-/*Cont            C4*/ {__,__,__,__,__,KH,__,__,__,__,__,HK,__,__,__,__,HK,__,HK,HK,HK,C5,HK,HK,HK,HK,HK,HK,HK},
-/*Conte           C5*/ {__,__,__,__,__,KH,__,__,__,__,__,HK,__,__,__,__,HK,__,HK,C6,HK,HK,HK,HK,HK,HK,HK,HK,HK},
-/*Conten          C6*/ {__,__,__,__,__,KH,__,__,__,__,__,HK,__,__,__,__,HK,__,HK,HK,HK,HK,HK,HK,HK,HK,HK,C7,HK},
-/*Content         C7*/ {__,__,__,__,__,KH,__,__,__,__,__,HK,__,__,__,__,HK,__,HK,HK,HK,C8,HK,HK,HK,HK,HK,HK,HK},
-/*Content-        C8*/ {__,__,__,__,__,KH,__,__,__,__,__,C9,__,__,__,__,HK,__,HK,HK,HK,HK,HK,HK,HK,HK,HK,HK,HK},
-/*Content-l       C9*/ {__,__,__,__,__,KH,__,__,__,__,__,HK,__,__,__,__,HK,__,HK,HK,HK,HK,HK,HK,HK,HK,HK,HK,CA},
-/*Content-le      CA*/ {__,__,__,__,__,KH,__,__,__,__,__,HK,__,__,__,__,HK,__,HK,CB,HK,HK,HK,HK,HK,HK,HK,HK,HK},
-/*Content-len     CB*/ {__,__,__,__,__,KH,__,__,__,__,__,HK,__,__,__,__,HK,__,HK,HK,HK,HK,HK,HK,HK,HK,HK,CC,HK},
-/*Content-leng    CC*/ {__,__,__,__,__,KH,__,__,__,__,__,HK,__,__,__,__,HK,__,HK,HK,CD,HK,HK,HK,HK,HK,HK,HK,HK},
-/*Content-lengt   CD*/ {__,__,__,__,__,KH,__,__,__,__,__,HK,__,__,__,__,HK,__,HK,HK,HK,CE,HK,HK,HK,HK,HK,HK,HK},
-/*Content-length  CE*/ {__,__,__,__,__,KH,__,__,__,__,__,HK,__,__,__,__,HK,__,HK,HK,HK,HK,HK,CF,HK,HK,HK,HK,HK},
-/*Content-length: CF*/ {__,__,__,__,__,CG,__,__,__,__,__,HK,__,__,__,__,HK,__,HK,HK,HK,HK,HK,HK,HK,HK,HK,HK,HK},
-/*Content-length: CG*/ {__,KC,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__},
-/* CL value       CV*/ {__,__,__,VE,VE,__,__,__,__,__,__,__,__,__,__,VC,__,__,__,__,__,__,__,__,__,__,__,__,__},
-/* 		  E1*/ {__,H1,__,__,__,__,__,__,__,PC,PC,PC,PC,__,PC,EA,PC,__,EA,EA,PC,PC,PC,PC,PC,PC,EA,PC,PC},
-/* 		  E2*/ {__,H1,__,__,__,__,__,__,__,PC,PC,PC,PC,__,PC,EB,PC,__,EB,EB,PC,PC,PC,PC,PC,PC,EB,PC,PC},
-/* 		  FI*/ {__,__,__,__,EH,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__}
+                       | space |  \r\n  :  ,  "  \  /  +  -  .  ?  % 09  |  *  | E  G  T  P  H  O  S  C  N  L  _ */
+/*start           GO*/ {__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,G1,__,P1,__,__,__,__,__,__,__},
+/*GE              G1*/ {__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,G2,__,__,__,__,__,__,__,__,__,__},
+/*GET             G2*/ {__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,G3,__,__,__,__,__,__,__,__},
+/*GET             G3*/ {__,MG,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__},
+/*PO              P1*/ {__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,P2,__,__,__,__,__},
+/*POS             P2*/ {__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,P3,__,__,__,__},
+/*POST            P3*/ {__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,P4,__,__,__,__,__,__,__,__},
+/*POST            P4*/ {__,MP,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__},
+/* path	          PT*/ {__,PE,__,__,__,__,__,__,__,PC,PC,PC,PC,QS,E1,PC,PC,__,PC,PC,PC,PC,PC,PC,PC,PC,PC,PC,PC,PC},
+/*H 	          H1*/ {__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,H2,__,__,__,__,__,__},
+/*HT	          H2*/ {__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,H3,__,__,__,__,__,__,__,__},
+/*HTT	          H3*/ {__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,H4,__,__,__,__,__,__,__,__},
+/*HTTP	          H4*/ {__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,H5,__,__,__,__,__,__,__},
+/*HTTP/	          H5*/ {__,__,__,__,__,__,__,__,__,H6,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__},
+/*HTTP/[0-9]      H6*/ {__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,HA,__,__,__,__,__,__,__,__,__,__,__,__,__,__},
+/*HTTP/[0-9]/     H7*/ {__,__,__,__,__,__,__,__,__,__,__,__,H8,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__},
+/*HTTP/[0-9]/[0-9]H8*/ {__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,HB,__,__,__,__,__,__,__,__,__,__,__,__,__,__},
+/* new line 	  EL*/ {__,__,__,ER,C1,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__},
+/* \r expect \n   ER*/ {__,__,__,__,C1,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__},
+/* header key 	  HK*/ {__,__,__,__,__,KH,__,__,__,__,__,HK,__,__,__,__,HK,__,HK,HK,HK,HK,HK,HK,HK,HK,HK,HK,HK,__},
+/* header value   HV*/ {__,HV,__,VH,VH,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV},
+/*C               C1*/ {__,__,__,FI,EH,KH,__,__,__,__,__,HK,__,__,__,__,HK,__,HK,HK,HK,HK,HK,HK,HK,HK,C2,HK,HK,__},
+/*Co              C2*/ {__,__,__,__,__,KH,__,__,__,__,__,HK,__,__,__,__,HK,__,HK,HK,HK,HK,HK,HK,C3,HK,HK,HK,HK,__},
+/*Con             C3*/ {__,__,__,__,__,KH,__,__,__,__,__,HK,__,__,__,__,HK,__,HK,HK,HK,HK,HK,HK,HK,HK,HK,C4,HK,__},
+/*Cont            C4*/ {__,__,__,__,__,KH,__,__,__,__,__,HK,__,__,__,__,HK,__,HK,HK,HK,C5,HK,HK,HK,HK,HK,HK,HK,__},
+/*Conte           C5*/ {__,__,__,__,__,KH,__,__,__,__,__,HK,__,__,__,__,HK,__,HK,C6,HK,HK,HK,HK,HK,HK,HK,HK,HK,__},
+/*Conten          C6*/ {__,__,__,__,__,KH,__,__,__,__,__,HK,__,__,__,__,HK,__,HK,HK,HK,HK,HK,HK,HK,HK,HK,C7,HK,__},
+/*Content         C7*/ {__,__,__,__,__,KH,__,__,__,__,__,HK,__,__,__,__,HK,__,HK,HK,HK,C8,HK,HK,HK,HK,HK,HK,HK,__},
+/*Content-        C8*/ {__,__,__,__,__,KH,__,__,__,__,__,C9,__,__,__,__,HK,__,HK,HK,HK,HK,HK,HK,HK,HK,HK,HK,HK,__},
+/*Content-l       C9*/ {__,__,__,__,__,KH,__,__,__,__,__,HK,__,__,__,__,HK,__,HK,HK,HK,HK,HK,HK,HK,HK,HK,HK,CA,__},
+/*Content-le      CA*/ {__,__,__,__,__,KH,__,__,__,__,__,HK,__,__,__,__,HK,__,HK,CB,HK,HK,HK,HK,HK,HK,HK,HK,HK,__},
+/*Content-len     CB*/ {__,__,__,__,__,KH,__,__,__,__,__,HK,__,__,__,__,HK,__,HK,HK,HK,HK,HK,HK,HK,HK,HK,CC,HK,__},
+/*Content-leng    CC*/ {__,__,__,__,__,KH,__,__,__,__,__,HK,__,__,__,__,HK,__,HK,HK,CD,HK,HK,HK,HK,HK,HK,HK,HK,__},
+/*Content-lengt   CD*/ {__,__,__,__,__,KH,__,__,__,__,__,HK,__,__,__,__,HK,__,HK,HK,HK,CE,HK,HK,HK,HK,HK,HK,HK,__},
+/*Content-length  CE*/ {__,__,__,__,__,KH,__,__,__,__,__,HK,__,__,__,__,HK,__,HK,HK,HK,HK,HK,CF,HK,HK,HK,HK,HK,__},
+/*Content-length: CF*/ {__,__,__,__,__,CG,__,__,__,__,__,HK,__,__,__,__,HK,__,HK,HK,HK,HK,HK,HK,HK,HK,HK,HK,HK,__},
+/*Content-length: CG*/ {__,KC,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__},
+/* CL value       CV*/ {__,__,__,VE,VE,__,__,__,__,__,__,__,__,__,__,VC,__,__,__,__,__,__,__,__,__,__,__,__,__,__},
+/* 		  E1*/ {__,PE,__,__,__,__,__,__,__,PC,PC,PC,PC,__,PC,EA,PC,__,EA,EA,PC,PC,PC,PC,PC,PC,EA,PC,PC,PC},
+/* 		  E2*/ {__,PE,__,__,__,__,__,__,__,PC,PC,PC,PC,__,PC,EB,PC,__,EB,EB,PC,PC,PC,PC,PC,PC,EB,PC,PC,PC},
+/* 		  FI*/ {__,__,__,__,EH,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__},
+/* body	          BT*/ {__,BC,BC,BC,BC,__,__,__,__,BC,BC,BC,BC,__,B1,BC,BC,__,BC,BC,BC,BC,BC,BC,BC,BC,BC,BC,BC,BC},
 };
 
 /* compiled as jump table by gcc */
@@ -172,7 +176,13 @@ inline int parse_http_char(struct _http_parser *parser, const unsigned char c)
 	if (c_classe == C_NUL) return 0;
 	
 	state = state_transition_table[parser->state][c_classe]; /* state > 0, action < 0 */
-
+	
+	/*if (HTTP_ISBODYCONTENT() && --parser->cl == 0) {
+		parser->callback(parser->ctx, HTTP_BODY_CHAR, c, parser->step);
+		parser->callback(parser->ctx, HTTP_READY, 0, parser->step);
+		return 1;
+	}*/
+	
 	if (state >= 0) {
 		parser->state = state;
 	} else {
@@ -186,6 +196,13 @@ inline int parse_http_char(struct _http_parser *parser, const unsigned char c)
 				parser->callback(parser->ctx, HTTP_METHOD, HTTP_POST, parser->step);
 				parser->rx |= HTTP_FLG_POST;
 				parser->state = PT;
+				break;
+			case PE:
+				if (!HTTP_ISQS()) {
+					parser->callback(parser->ctx, HTTP_PATH_END, 0, parser->step);
+				}
+				parser->state = H1;
+				
 				break;
 			case HA: /* HTTP Major */
 				parser->callback(parser->ctx, HTTP_VERSION_MAJOR, c-'0', parser->step);
@@ -217,35 +234,50 @@ inline int parse_http_char(struct _http_parser *parser, const unsigned char c)
 				parser->callback(parser->ctx, HTTP_CL_VAL, parser->cl, parser->step);
 				parser->state = (c_classe == C_CR ? ER : C1); /* \r\n or \n */
 				break;
+
 			case EA: /* first char from %x */
+
 				ch = (unsigned char) (c | 0x20); /* tolower */
+
+				parser->rx |= (unsigned char)(10 + ch - 
+						((ch >= '0' && ch <= '9') ? '0'+10 : 'a'))
+							| (c << 8);
 				
-				if (ch >= '0' && ch <= '9') {
-					parser->rx |= (unsigned char)(ch - '0') | (c << 8); /* convert to int and store the original char to 0xXXFF */
-				} else if (ch >= 'a' && ch <= 'f') {
-					parser->rx |= (unsigned char)(ch - 'a' + 10) | (c << 8);
-				}
 				parser->state = E2;
+
 				break;
 			case EB: /* second char from %xx */
 				ch = (unsigned char) (c | 0x20); /* tolower */
 				
-				if (ch >= '0' && ch <= '9') {
-					ch = (unsigned char) (((parser->rx & 0x000000ff /* mask the original char */) << 4) + ch - '0');
-				} else if (ch >= 'a' && ch <= 'f') {
-					ch = (unsigned char) (((parser->rx & 0x000000ff) << 4) + ch - 'a' + 10);
-				}
+				ch = (unsigned char) (((parser->rx & 0x000000ff) << 4) + 10 + ch - 
+						((ch >= '0' && ch <= '9') ? '0'+10 : 'a'));
 				
 				parser->callback(parser->ctx, HTTP_PATHORQS, ch, parser->step); /* return the decoded char */
-				parser->state = PT;
+				parser->state = HTTP_ISBODYCONTENT() ? BT : PT;
 				break;
-			case PC: PC:
-			case QS:
+			case EH:
+				parser->callback(parser->ctx, HTTP_HEADER_END, 0, parser->step);
+				if (HTTP_ISPOST()) {
+					parser->state = BT;
+					parser->rx = HTTP_FLG_POST | HTTP_FLG_QS | HTTP_FLG_BODYCONTENT;
+					if (parser->cl) break; /* assume ready is 0/no content-length */
+				}
+				parser->callback(parser->ctx, HTTP_READY, 0, parser->step);
+				break;
+			case B1:
+				parser->state = E1;
+				printf("%% detected in body\n");
 			case BC:
-				switch(parser->state) {
+				printf("Body char involved\n");
+				if (--parser->cl == 0) {
+					
+				}
+			case PC:
+			case QS:
+				switch(parser->state) { /* In case unhex failed, back send previous char to callback */
 				case E1:
 					parser->callback(parser->ctx, HTTP_PATHORQS, '%', parser->step);
-					parser->rx &= 0xF0000000;
+					parser->rx &= 0xF0000000; /* keep flags set but reset temp char */
 					break;
 				case E2:
 					parser->callback(parser->ctx, HTTP_PATHORQS, '%', parser->step);
@@ -254,32 +286,14 @@ inline int parse_http_char(struct _http_parser *parser, const unsigned char c)
 				default:
 					break;
 				}
-				parser->state = PT;
+				parser->state = HTTP_ISBODYCONTENT() ? BT : PT;
+				
 				if (state == QS && !HTTP_ISQS()) {
 					parser->rx |= HTTP_FLG_QS;
 					parser->callback(parser->ctx, HTTP_PATH_END, 0, parser->step);
 					break;
 				}
 				parser->callback(parser->ctx, HTTP_PATHORQS, c, parser->step);
-				break;
-			case PE:
-				if (!HTTP_ISQS()) {
-					parser->callback(parser->ctx, HTTP_PATH_END, 0, parser->step);
-				} else if (HTTP_ISBODYCONTENT()) {
-					parser->state = PC;
-					goto PC;
-				}
-				parser->state = H1;
-				
-				break;
-			case EH:
-				parser->callback(parser->ctx, HTTP_HEADER_END, 0, parser->step);
-				if (HTTP_ISPOST()) {
-					parser->state = PT;
-					parser->rx = HTTP_FLG_POST | HTTP_FLG_QS | HTTP_FLG_BODYCONTENT;
-					break;
-				}
-				parser->callback(parser->ctx, HTTP_READY, 0, parser->step);
 				break;
 			default:
 				return 0;

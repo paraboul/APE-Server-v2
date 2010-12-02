@@ -62,6 +62,7 @@ typedef enum states {
 	E1, /* first hex in % path */
 	E2, /* second hex in % path */
 	FI, /* header is about to finish */
+	BT, /* Body char */
 	NR_STATES
 } parser_state;
 
@@ -72,7 +73,7 @@ typedef struct _http_parser {
 	void *ctx; 			/* user defined */
 	uint32_t rx;			/* flag (32bit) (pass through states) */
 	uint32_t step; 			/* char number */
-	uint64_t cl; 			/* content-length */ /* TODO : store cl in rx */
+	uint32_t cl; 			/* content-length */ /* TODO : store cl in rx */
 	parser_state state; 		/* state */
 } http_parser;
 

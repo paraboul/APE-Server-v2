@@ -80,7 +80,6 @@ int main(int argc, char **argv)
 		}
 	}
 
-	
 	events_loop(ape);
 	
 	return 0;
