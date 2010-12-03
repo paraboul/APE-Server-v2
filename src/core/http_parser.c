@@ -159,21 +159,32 @@ inline int parse_http_char(struct _http_parser *parser, const unsigned char c)
 #define HTTP_FLG_POST (1 << 31)
 #define HTTP_FLG_QS (1 << 30)
 #define HTTP_FLG_BODYCONTENT (1 << 29)
-
+#define HTTP_FLG_READY (1 << 28)
 
 #define HTTP_ISQS() (parser->rx & HTTP_FLG_QS)
 #define HTTP_ISPOST() (parser->rx & HTTP_FLG_POST)
 #define HTTP_ISBODYCONTENT() (parser->rx & HTTP_FLG_BODYCONTENT)
+#define HTTP_ISREADY() (parser->rx & HTTP_FLG_READY)
 
 #define HTTP_PATHORQS (HTTP_ISQS() ? (HTTP_ISBODYCONTENT() ? HTTP_BODY_CHAR : HTTP_QS_CHAR) : HTTP_PATH_CHAR)
 	
+#define HTTP_CONSUME_BODY() \
+	do { if (--parser->cl == 0) { \
+		parser->rx |= HTTP_FLG_READY; \
+		parser->callback(parser->ctx, HTTP_READY, 0, parser->step); \
+		break; \
+	} } while(0)
+	
+#define HTTP_BODY_AS_ENDED() (HTTP_ISBODYCONTENT() && --parser->cl == 0 && (parser->rx |= HTTP_FLG_READY, 1))
+
+		
 	parser_class c_classe = ascii_class[c];
 	int8_t state;
 	unsigned char ch;
 	
 	parser->step++;
 	
-	if (c_classe == C_NUL) return 0;
+	if (c_classe == C_NUL || HTTP_ISREADY()) return 0;
 	
 	state = state_transition_table[parser->state][c_classe]; /* state > 0, action < 0 */
 	
@@ -236,7 +247,12 @@ inline int parse_http_char(struct _http_parser *parser, const unsigned char c)
 				break;
 
 			case EA: /* first char from %x */
-
+				if (HTTP_BODY_AS_ENDED()) {
+					parser->callback(parser->ctx, HTTP_BODY_CHAR, '%', parser->step);
+					parser->callback(parser->ctx, HTTP_BODY_CHAR, c, parser->step);
+					parser->callback(parser->ctx, HTTP_READY, 0, parser->step);
+					break;					
+				}			
 				ch = (unsigned char) (c | 0x20); /* tolower */
 
 				parser->rx |= (unsigned char)(10 + ch - 
@@ -247,6 +263,7 @@ inline int parse_http_char(struct _http_parser *parser, const unsigned char c)
 
 				break;
 			case EB: /* second char from %xx */
+				
 				ch = (unsigned char) (c | 0x20); /* tolower */
 				
 				ch = (unsigned char) (((parser->rx & 0x000000ff) << 4) + 10 + ch - 
@@ -254,26 +271,36 @@ inline int parse_http_char(struct _http_parser *parser, const unsigned char c)
 				
 				parser->callback(parser->ctx, HTTP_PATHORQS, ch, parser->step); /* return the decoded char */
 				parser->state = HTTP_ISBODYCONTENT() ? BT : PT;
+				if (HTTP_BODY_AS_ENDED()) {
+					parser->callback(parser->ctx, HTTP_READY, 0, parser->step);
+				}
 				break;
 			case EH:
 				parser->callback(parser->ctx, HTTP_HEADER_END, 0, parser->step);
 				if (HTTP_ISPOST()) {
 					parser->state = BT;
 					parser->rx = HTTP_FLG_POST | HTTP_FLG_QS | HTTP_FLG_BODYCONTENT;
-					if (parser->cl) break; /* assume ready is 0/no content-length */
+					if (parser->cl) break; /* assume ready if 0/no content-length */
 				}
+				parser->rx |= HTTP_FLG_READY;
 				parser->callback(parser->ctx, HTTP_READY, 0, parser->step);
 				break;
-			case B1:
+				
+			case B1:B1:
 				parser->state = E1;
-				printf("%% detected in body\n");
-			case BC:
-				printf("Body char involved\n");
-				if (--parser->cl == 0) {
-					
-				}
+			case BC:BC:
+				if (HTTP_BODY_AS_ENDED()) {
+					parser->callback(parser->ctx, HTTP_BODY_CHAR, c, parser->step);
+					parser->callback(parser->ctx, HTTP_READY, 0, parser->step);
+					break;
+				}	
+				if (state == B1) break;
 			case PC:
 			case QS:
+				if (state == PC && HTTP_ISBODYCONTENT()) {
+					if (c == '%') goto B1;
+					goto BC;
+				}
 				switch(parser->state) { /* In case unhex failed, back send previous char to callback */
 				case E1:
 					parser->callback(parser->ctx, HTTP_PATHORQS, '%', parser->step);
@@ -281,7 +308,7 @@ inline int parse_http_char(struct _http_parser *parser, const unsigned char c)
 					break;
 				case E2:
 					parser->callback(parser->ctx, HTTP_PATHORQS, '%', parser->step);
-					parser->callback(parser->ctx, HTTP_PATHORQS, parser->rx >> 8 /* restor original char */, parser->step);
+					parser->callback(parser->ctx, HTTP_PATHORQS, (parser->rx >> 8) & 0x000000FF, parser->step);
 					break;
 				default:
 					break;
