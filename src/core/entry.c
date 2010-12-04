@@ -79,7 +79,7 @@ int main(int argc, char **argv)
 			printf("[Module] Failed to load %s\n", ape_modules[z]->name);
 		}
 	}
-
+	
 	events_loop(ape);
 	
 	return 0;

@@ -97,11 +97,10 @@ typedef enum actions {
 	EA = -12, /* first hex in % path */
 	EB = -13, /* second digit in % path */
 	EH = -14, /* end of headers */
-	B1 = -15, /* % in body char (unhex start) */
-	BC = -16, /* body char */
-	PC = -17, /* path char */
-	QS = -18, /* query string */
-
+	BC = -15, /* body char */
+	PC = -16, /* path char */
+	QS = -17, /* query string */
+	BH = -18  /* Begin unhex */
 } parser_actions;
 
 
@@ -147,10 +146,10 @@ static int state_transition_table[NR_STATES][NR_CLASSES] = {
 /*Content-length: CF*/ {__,__,__,__,__,CG,__,__,__,__,__,HK,__,__,__,__,HK,__,HK,HK,HK,HK,HK,HK,HK,HK,HK,HK,HK,__},
 /*Content-length: CG*/ {__,KC,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__},
 /* CL value       CV*/ {__,__,__,VE,VE,__,__,__,__,__,__,__,__,__,__,VC,__,__,__,__,__,__,__,__,__,__,__,__,__,__},
-/* 		  E1*/ {__,PE,__,__,__,__,__,__,__,PC,PC,PC,PC,__,PC,EA,PC,__,EA,EA,PC,PC,PC,PC,PC,PC,EA,PC,PC,PC},
-/* 		  E2*/ {__,PE,__,__,__,__,__,__,__,PC,PC,PC,PC,__,PC,EB,PC,__,EB,EB,PC,PC,PC,PC,PC,PC,EB,PC,PC,PC},
+/* 		  E1*/ {__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,EA,__,__,EA,EA,__,__,__,__,__,__,EA,__,__,__},
+/* 		  E2*/ {__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,EB,__,__,EB,EB,__,__,__,__,__,__,EB,__,__,__},
 /* 		  FI*/ {__,__,__,__,EH,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__},
-/* body	          BT*/ {__,BC,BC,BC,BC,__,__,__,__,BC,BC,BC,BC,__,B1,BC,BC,__,BC,BC,BC,BC,BC,BC,BC,BC,BC,BC,BC,BC},
+/* body	          BT*/ {__,BC,BC,BC,BC,__,__,__,__,BC,BC,BC,BC,__,BH,BC,BC,__,BC,BC,BC,BC,BC,BC,BC,BC,BC,BC,BC,BC},
 };
 
 /* compiled as jump table by gcc */
@@ -166,15 +165,15 @@ inline int parse_http_char(struct _http_parser *parser, const unsigned char c)
 #define HTTP_ISBODYCONTENT() (parser->rx & HTTP_FLG_BODYCONTENT)
 #define HTTP_ISREADY() (parser->rx & HTTP_FLG_READY)
 
-#define HTTP_PATHORQS (HTTP_ISQS() ? (HTTP_ISBODYCONTENT() ? HTTP_BODY_CHAR : HTTP_QS_CHAR) : HTTP_PATH_CHAR)
+#define HTTP_PATHORQS (HTTP_ISQS() ? HTTP_QS_CHAR : HTTP_PATH_CHAR)
 	
 #define HTTP_CONSUME_BODY() \
-	do { if (--parser->cl == 0) { \
+	if (--parser->cl == 0) { \
 		parser->rx |= HTTP_FLG_READY; \
 		parser->callback(parser->ctx, HTTP_READY, 0, parser->step); \
-		break; \
-	} } while(0)
+	}
 	
+
 #define HTTP_BODY_AS_ENDED() (HTTP_ISBODYCONTENT() && --parser->cl == 0 && (parser->rx |= HTTP_FLG_READY, 1))
 
 		
@@ -187,12 +186,7 @@ inline int parse_http_char(struct _http_parser *parser, const unsigned char c)
 	if (c_classe == C_NUL || HTTP_ISREADY()) return 0;
 	
 	state = state_transition_table[parser->state][c_classe]; /* state > 0, action < 0 */
-	
-	/*if (HTTP_ISBODYCONTENT() && --parser->cl == 0) {
-		parser->callback(parser->ctx, HTTP_BODY_CHAR, c, parser->step);
-		parser->callback(parser->ctx, HTTP_READY, 0, parser->step);
-		return 1;
-	}*/
+
 	
 	if (state >= 0) {
 		parser->state = state;
@@ -248,10 +242,7 @@ inline int parse_http_char(struct _http_parser *parser, const unsigned char c)
 
 			case EA: /* first char from %x */
 				if (HTTP_BODY_AS_ENDED()) {
-					parser->callback(parser->ctx, HTTP_BODY_CHAR, '%', parser->step);
-					parser->callback(parser->ctx, HTTP_BODY_CHAR, c, parser->step);
-					parser->callback(parser->ctx, HTTP_READY, 0, parser->step);
-					break;					
+					return 0;				
 				}			
 				ch = (unsigned char) (c | 0x20); /* tolower */
 
@@ -262,17 +253,17 @@ inline int parse_http_char(struct _http_parser *parser, const unsigned char c)
 				parser->state = E2;
 
 				break;
-			case EB: /* second char from %xx */
-				
+			case EB: /* second char from %xx */					
 				ch = (unsigned char) (c | 0x20); /* tolower */
 				
 				ch = (unsigned char) (((parser->rx & 0x000000ff) << 4) + 10 + ch - 
 						((ch >= '0' && ch <= '9') ? '0'+10 : 'a'));
 				
-				parser->callback(parser->ctx, HTTP_PATHORQS, ch, parser->step); /* return the decoded char */
+				parser->callback(parser->ctx, HTTP_ISBODYCONTENT() ? HTTP_BODY_CHAR : HTTP_PATHORQS, ch, parser->step); /* return the decoded char */
 				parser->state = HTTP_ISBODYCONTENT() ? BT : PT;
-				if (HTTP_BODY_AS_ENDED()) {
-					parser->callback(parser->ctx, HTTP_READY, 0, parser->step);
+				parser->rx &= 0xF0000000;
+				if (HTTP_ISBODYCONTENT()) {
+					HTTP_CONSUME_BODY();
 				}
 				break;
 			case EH:
@@ -285,42 +276,29 @@ inline int parse_http_char(struct _http_parser *parser, const unsigned char c)
 				parser->rx |= HTTP_FLG_READY;
 				parser->callback(parser->ctx, HTTP_READY, 0, parser->step);
 				break;
-				
-			case B1:B1:
-				parser->state = E1;
-			case BC:BC:
-				if (HTTP_BODY_AS_ENDED()) {
-					parser->callback(parser->ctx, HTTP_BODY_CHAR, c, parser->step);
-					parser->callback(parser->ctx, HTTP_READY, 0, parser->step);
-					break;
-				}	
-				if (state == B1) break;
+			case BC:
+				parser->callback(parser->ctx, HTTP_BODY_CHAR, c, parser->step);
+				HTTP_CONSUME_BODY();
+				break;
 			case PC:
 			case QS:
-				if (state == PC && HTTP_ISBODYCONTENT()) {
-					if (c == '%') goto B1;
-					goto BC;
-				}
-				switch(parser->state) { /* In case unhex failed, back send previous char to callback */
-				case E1:
-					parser->callback(parser->ctx, HTTP_PATHORQS, '%', parser->step);
-					parser->rx &= 0xF0000000; /* keep flags set but reset temp char */
-					break;
-				case E2:
-					parser->callback(parser->ctx, HTTP_PATHORQS, '%', parser->step);
-					parser->callback(parser->ctx, HTTP_PATHORQS, (parser->rx >> 8) & 0x000000FF, parser->step);
-					break;
-				default:
-					break;
-				}
-				parser->state = HTTP_ISBODYCONTENT() ? BT : PT;
+
+				parser->state = PT;
 				
 				if (state == QS && !HTTP_ISQS()) {
 					parser->rx |= HTTP_FLG_QS;
 					parser->callback(parser->ctx, HTTP_PATH_END, 0, parser->step);
 					break;
 				}
+
 				parser->callback(parser->ctx, HTTP_PATHORQS, c, parser->step);
+
+				break;
+			case BH:
+				if (HTTP_BODY_AS_ENDED()) {
+					return 0;				
+				}
+				parser->state = E1;
 				break;
 			default:
 				return 0;
