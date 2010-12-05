@@ -13,8 +13,13 @@
 #include "server.h"
 #include "dns.h"
 #include "modules.h"
+#include "ape_config.h"
 
-ape_global *ape_init()
+/*
+gcc -g *.c ../modules/*.c -I../core/ -I../../deps/ -I/usr/include/ ../../deps/c-ares/.libs/libcares.a ../../deps/confuse-2.7/src/.libs/libconfuse.a ../../deps/jsapi/src/libjs_static.a -lrt -lstdc++
+*/
+
+static ape_global *ape_init()
 {
 	ape_global *ape;
 	struct _fdevent *fdev;
@@ -43,7 +48,7 @@ ape_global *ape_init()
 	ape->seed = time(NULL) ^ (getpid() << 16);
 	
 	events_init(ape);
-	
+
 	return ape;
 }
 
@@ -80,6 +85,8 @@ int main(int argc, char **argv)
 		}
 	}
 	
+	ape->conf = ape_read_config("../../etc/ape.conf");
+		
 	events_loop(ape);
 	
 	return 0;

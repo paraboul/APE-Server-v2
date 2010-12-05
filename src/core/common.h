@@ -2,8 +2,10 @@
 #define _APE_COMMON_H_
 
 #include "config.h"
+
 #include <stdio.h>
 #include <c-ares/ares.h>
+
 
 #define APE_BASEMEM 4096
 #define __REV "2.0wip"
@@ -13,7 +15,7 @@
 
 typedef struct _ape_global ape_global;
 
-
+#include "ape_config.h"
 #include "events.h"
 
 
@@ -27,8 +29,10 @@ extern ape_module_t  *ape_modules[];
 struct _ape_global {
 	int basemem;
 	void *ctx; /* public */
-	struct _fdevent events;
+	cfg_t *conf;
+	
 	unsigned int seed;
+	struct _fdevent events;
 	
 	struct {
 		ares_channel channel;
