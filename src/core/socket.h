@@ -63,7 +63,8 @@ typedef enum {
 typedef enum {
 	APE_SOCKET_ONLINE,
 	APE_SOCKET_PROGRESS,
-	APE_SOCKET_PENDING
+	APE_SOCKET_PENDING,
+	APE_SOCKET_OFFLINE
 } ape_socket_state;
 
 typedef struct {

@@ -14,12 +14,10 @@ void events_loop(ape_global *ape)
 			printf("events error\n");
 			continue;
 		}
-		
 		for (i = 0; i < nfd; i++) {
 			attach 	= events_get_current_fd(&ape->events, i);
 			bitev 	= events_revent(&ape->events, i);
 			fd	= ((ape_fds *)attach)->fd; /* assuming that ape_fds is the first member */
-			
 			switch(((ape_fds *)attach)->type) {
 			
 			case APE_SOCKET:
@@ -35,6 +33,12 @@ void events_loop(ape_global *ape)
 					}
 					break;
 				case APE_SOCKET_CLIENT:
+					if (bitev & EVENT_READ &&
+						ape_socket_read(APE_SOCKET(attach), ape) == -1) {
+						
+						continue; /* ape_socket is free'ed */
+					}
+					
 					if (bitev & EVENT_WRITE) {
 						if (APE_SOCKET(attach)->state == APE_SOCKET_PROGRESS) {
 							int serror = 0, ret;
@@ -49,12 +53,12 @@ void events_loop(ape_global *ape)
 							} else {
 								printf("Failed to connect\n");
 							}
+						} else if (APE_SOCKET(attach)->state == APE_SOCKET_ONLINE) {
+							/* Do we have something to send ? */
+							printf("[Socket] Rdy to send %i\n", APE_SOCKET(attach)->s.fd);
 						}
 					}
-					if (bitev & EVENT_READ) {
-						ape_socket_read(APE_SOCKET(attach), ape);
-					}
-					
+
 					break;
 				case APE_SOCKET_UNKNOWN:
 					break;

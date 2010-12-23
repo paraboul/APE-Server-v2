@@ -53,6 +53,7 @@ static int ape_module_inotify_init(ape_global *ape)
 
 ape_module_t ape_inotify_module = {
 	"APE inotify",
-	ape_module_inotify_init
+	ape_module_inotify_init,
+	/*ape_module_inotidy_finish*/
 };
 

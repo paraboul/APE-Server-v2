@@ -51,6 +51,7 @@ struct _fdevent {
 	
 	/* Interface */
 	int (*add)		(struct _fdevent *, int, int, void *);
+	int (*del)		(struct _fdevent *, int);
 	int (*poll)		(struct _fdevent *, int);
 	void *(*get_current_fd)	(struct _fdevent *, int);
 	void (*growup)		(struct _fdevent *);
@@ -72,6 +73,7 @@ struct _fdevent {
 
 int events_init(ape_global *ape);
 int events_add(int fd, void *attach, int bitadd, ape_global *ape);
+int events_del(int fd, ape_global *ape);
 inline void *events_get_current_fd(struct _fdevent *ev, int i);
 inline int events_poll(struct _fdevent *ev, int timeout_ms);
 

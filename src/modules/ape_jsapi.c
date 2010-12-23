@@ -165,6 +165,7 @@ static int ape_module_jsapi_init(ape_global *ape)
 
 ape_module_t ape_jsapi_module = {
 	"APE JSAPI",
-	ape_module_jsapi_init
+	ape_module_jsapi_init,
+	/*ape_module_jsapi_finish*/
 };
 

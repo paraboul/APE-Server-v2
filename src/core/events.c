@@ -16,6 +16,17 @@ int events_add(int fd, void *attach, int bitadd, ape_global *ape)
 	return 1;
 }
 
+int events_del(int fd, ape_global *ape)
+{
+	struct _fdevent *ev = &ape->events;
+
+	if (ev->del(ev, fd) == -1) {
+		return -1;
+	}
+
+	return 1;
+}
+
 inline int events_poll(struct _fdevent *ev, int timeout_ms)
 {
 	int nfds;

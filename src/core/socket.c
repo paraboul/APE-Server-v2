@@ -142,6 +142,7 @@ int APE_socket_listen(ape_socket *socket, uint16_t port, const char *local_ip, a
 	socket->state = APE_SOCKET_ONLINE;
 	
 	events_add(socket->s.fd, socket, EVENT_READ|EVENT_WRITE, ape);
+	printf("Open socket on %i\n", socket->s.fd);
 	
 	return 0;
 	
@@ -153,7 +154,7 @@ static int ape_socket_connect_ready_to_connect(const char *remote_ip, void *arg,
 	struct sockaddr_in addr;
 	
 	if (status != ARES_SUCCESS) {
-		APE_socket_destroy(socket);
+		APE_socket_destroy(socket, ape);
 		return -1;
 	}
 	
@@ -165,7 +166,7 @@ static int ape_socket_connect_ready_to_connect(const char *remote_ip, void *arg,
 	if (connect(socket->s.fd, (struct sockaddr *)&addr, sizeof(struct sockaddr)) == 0 || 
 		errno != EINPROGRESS) {
 		
-		APE_socket_destroy(socket);
+		APE_socket_destroy(socket, ape);
 		return -1;
 	}
 	socket->type  = APE_SOCKET_CLIENT;
@@ -180,7 +181,7 @@ static int ape_socket_connect_ready_to_connect(const char *remote_ip, void *arg,
 int APE_socket_connect(ape_socket *socket, uint16_t port, const char *remote_ip_host, ape_global *ape)
 {
 	if (port == 0 || port > 65535) {
-		APE_socket_destroy(socket);
+		APE_socket_destroy(socket, ape);
 		return -1;
 	}
 	
@@ -190,13 +191,16 @@ int APE_socket_connect(ape_socket *socket, uint16_t port, const char *remote_ip_
 	return 0;
 }
 
-int APE_socket_destroy(ape_socket *socket)
+int APE_socket_destroy(ape_socket *socket, ape_global *ape)
 {
 	buffer_delete(&socket->data_in);
 	buffer_delete(&socket->data_out);
-
-	close(socket->s.fd);
 	
+	socket->state = APE_SOCKET_OFFLINE;
+	close(socket->s.fd);
+	#if 0
+	events_del(socket->s.fd, ape);
+	#endif
 	free(socket);
 }
 
@@ -223,7 +227,6 @@ inline int ape_socket_accept(ape_socket *socket, ape_global *ape)
 		if (socket->callbacks.on_connect != NULL) {
 			socket->callbacks.on_connect(client, ape);
 		}
-		
 	}
 	
 	return 0;
@@ -258,11 +261,12 @@ inline int ape_socket_read(ape_socket *socket, ape_global *ape)
 		if (socket->callbacks.on_disconnect != NULL) {
 			socket->callbacks.on_disconnect(socket, ape);
 		}
-		APE_socket_destroy(socket);
+
+		APE_socket_destroy(socket, ape);
 		
-		return 0;
+		return -1;
 	}
-	
+
 	return socket->data_in.used;
 }
 
