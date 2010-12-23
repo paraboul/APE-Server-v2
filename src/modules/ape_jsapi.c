@@ -72,7 +72,7 @@ APE_JS_NATIVE(ape_native_socket_constructor)
 	ape_socket *socket;
 
 	
-	socket 		= APE_socket_new(APE_SOCKET_TCP, 0);
+	socket 		= APE_socket_new(APE_SOCKET_PT_TCP, 0);
 	socket->ctx 	= obj; /* obj can be gc collected */
 	
 	JS_SetPrivate(cx, obj, socket);

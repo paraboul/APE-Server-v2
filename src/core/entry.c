@@ -75,7 +75,7 @@ int main(int argc, char **argv)
 	
 	h = hash("fop", 3, ape->seed);
 	
-	ape_server_init(6969, "127.0.0.1", ape);
+	ape_server_init(6969, "0.0.0.0", ape);
 	
 	for(z = 0; ape_modules[z]; z++) {
 		if (ape_modules[z]->ape_module_init(ape) == 0) {
@@ -86,7 +86,7 @@ int main(int argc, char **argv)
 	}
 	
 	ape->conf = ape_read_config("../../etc/ape.conf");
-		
+	
 	events_loop(ape);
 	
 	return 0;

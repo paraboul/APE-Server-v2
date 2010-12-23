@@ -47,25 +47,24 @@
 	#define FLUSH_TCP(fd)
 #endif
 
+
+#define APE_SOCKET_SET_BITS(bits, mask) bits = bits & mask
+#define APE_SOCKET_HAS_BITS(bits, mask) (bits & (0x00 & mask))
+
+#define APE_SOCKET_PT_TCP 	0xFF00FFFF | (0x01 << 16)
+#define APE_SOCKET_PT_UDP 	0xFF00FFFF | (0x02 << 16)
+
+#define APE_SOCKET_TP_UNKNOWN 	0xFFFF00FF | (0x01 << 8)
+#define APE_SOCKET_TP_SERVER 	0xFFFF00FF | (0x02 << 8)
+#define APE_SOCKET_TP_CLIENT 	0xFFFF00FF | (0x04 << 8)
+
+#define APE_SOCKET_ST_ONLINE	0xFFFFFF00 | (0x01)
+#define APE_SOCKET_ST_PROGRESS	0xFFFFFF00 | (0x02)
+#define APE_SOCKET_ST_PENDING	0xFFFFFF00 | (0x04)
+#define APE_SOCKET_ST_OFFLINE	0xFFFFFF00 | (0x08)
+
 typedef struct _ape_socket ape_socket;
 
-typedef enum {
-	APE_SOCKET_TCP,
-	APE_SOCKET_UDP
-} ape_socket_proto;
-
-typedef enum {
-	APE_SOCKET_UNKNOWN,
-	APE_SOCKET_SERVER,
-	APE_SOCKET_CLIENT
-} ape_socket_type;
-
-typedef enum {
-	APE_SOCKET_ONLINE,
-	APE_SOCKET_PROGRESS,
-	APE_SOCKET_PENDING,
-	APE_SOCKET_OFFLINE
-} ape_socket_state;
 
 typedef struct {
 	void (*on_read)		(ape_socket *, ape_global *);
@@ -87,14 +86,12 @@ struct _ape_socket {
 	void *ctx; 	/* public pointer */
 	
 	ape_socket_callbacks 	callbacks;
-	ape_socket_type 	type;
-	ape_socket_proto 	proto;
-	ape_socket_state	state;
 	
-	uint16_t remote_port;
+	uint32_t		flags;
+	uint16_t 		remote_port;
 };
 
-ape_socket *APE_socket_new(ape_socket_proto pt, int from);
+ape_socket *APE_socket_new(uint32_t pt, int from);
 
 int APE_socket_listen(ape_socket *socket, uint16_t port, const char *local_ip, ape_global *ape);
 int APE_socket_connect(ape_socket *socket, uint16_t port, const char *remote_ip_host, ape_global *ape);

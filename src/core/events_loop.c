@@ -15,24 +15,22 @@ void events_loop(ape_global *ape)
 			continue;
 		}
 		for (i = 0; i < nfd; i++) {
+			
 			attach 	= events_get_current_fd(&ape->events, i);
 			bitev 	= events_revent(&ape->events, i);
 			fd	= ((ape_fds *)attach)->fd; /* assuming that ape_fds is the first member */
 			switch(((ape_fds *)attach)->type) {
 			
 			case APE_SOCKET:
-				switch(APE_SOCKET(attach)->type) {
-				
-				case APE_SOCKET_SERVER:
+				if (APE_SOCKET_HAS_BITS(APE_SOCKET(attach)->flags, APE_SOCKET_TP_SERVER)) {
 					if (bitev & EVENT_READ) {
-						if (APE_SOCKET(attach)->proto == APE_SOCKET_TCP) {
+						if (APE_SOCKET_HAS_BITS(APE_SOCKET(attach)->flags, APE_SOCKET_PT_TCP)) {
 							ape_socket_accept(APE_SOCKET(attach), ape);
 						} else {							
 							printf("read on UDP\n");
 						}
 					}
-					break;
-				case APE_SOCKET_CLIENT:
+				} else if (APE_SOCKET_HAS_BITS(APE_SOCKET(attach)->flags, APE_SOCKET_TP_CLIENT)) {
 					if (bitev & EVENT_READ &&
 						ape_socket_read(APE_SOCKET(attach), ape) == -1) {
 						
@@ -40,28 +38,26 @@ void events_loop(ape_global *ape)
 					}
 					
 					if (bitev & EVENT_WRITE) {
-						if (APE_SOCKET(attach)->state == APE_SOCKET_PROGRESS) {
+						if (APE_SOCKET_HAS_BITS(APE_SOCKET(attach)->flags, APE_SOCKET_ST_PROGRESS)) {
 							int serror = 0, ret;
 							socklen_t serror_len = sizeof(serror);
 							
 							if ((ret = getsockopt(fd, SOL_SOCKET, SO_ERROR, &serror, &serror_len)) == 0 && 
 								serror == 0) {
 								
-								APE_SOCKET(attach)->state = APE_SOCKET_ONLINE;
-								
+								APE_SOCKET_SET_BITS(APE_SOCKET(attach)->flags, APE_SOCKET_ST_ONLINE);
+
 								printf("Success connect\n");
 							} else {
 								printf("Failed to connect\n");
 							}
-						} else if (APE_SOCKET(attach)->state == APE_SOCKET_ONLINE) {
+						} else if (APE_SOCKET_HAS_BITS(APE_SOCKET(attach)->flags, APE_SOCKET_ST_ONLINE)) {
 							/* Do we have something to send ? */
 							printf("[Socket] Rdy to send %i\n", APE_SOCKET(attach)->s.fd);
 						}
 					}
-
-					break;
-				case APE_SOCKET_UNKNOWN:
-					break;
+				} else if (APE_SOCKET_HAS_BITS(APE_SOCKET(attach)->flags, APE_SOCKET_TP_UNKNOWN)) {
+					
 				}
 				
 				break;

@@ -165,13 +165,12 @@ ape_server *ape_server_init(uint16_t port, const char *local_ip, ape_global *ape
 	ape_socket *socket;
 	ape_server *server;
 	
-	if ((socket = APE_socket_new(APE_SOCKET_TCP, 0)) == NULL ||
+	if ((socket = APE_socket_new(APE_SOCKET_PT_TCP, 0)) == NULL ||
 		APE_socket_listen(socket, port, local_ip, ape) != 0) {
-		
 		APE_socket_destroy(socket);
 		return NULL;
 	}
-	
+
 	server 		= malloc(sizeof(*server));
 	server->socket 	= socket;
 		

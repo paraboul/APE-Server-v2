@@ -52,7 +52,7 @@ static inline int setnonblocking(int fd)
 #endif
 
 
-ape_socket *APE_socket_new(ape_socket_proto pt, int from)
+ape_socket *APE_socket_new(uint32_t pt, int from)
 {
 	int sock = from, proto = SOCK_STREAM;
 	
@@ -73,31 +73,29 @@ ape_socket *APE_socket_new(ape_socket_proto pt, int from)
 	/* TODO WSAClean et al */
 #endif
 
-	switch(pt) {
+	proto = (pt == ((uint32_t)APE_SOCKET_PT_UDP) ? SOCK_DGRAM : SOCK_STREAM);
 	
-	case APE_SOCKET_UDP:
-		proto = SOCK_DGRAM;
-		break;
-	case APE_SOCKET_TCP:
-	default:
-		proto = SOCK_STREAM;
-	}
-	
-	if (sock == 0 && (sock = socket(AF_INET /* TODO AF_INET6 */, proto, 0)) == -1) {
-		return NULL;
-	}
-
-	if (setnonblocking(sock) == -1) {
+	if (sock == 0 && 
+		(sock = socket(AF_INET /* TODO AF_INET6 */, proto, 0)) == -1 || 
+		setnonblocking(sock) == -1) {
 		return NULL;
 	}
 
 	ret 		= malloc(sizeof(*ret));
 	ret->s.fd 	= sock;
 	ret->s.type	= APE_SOCKET;
-	ret->type 	= APE_SOCKET_UNKNOWN;
-	ret->state	= APE_SOCKET_PENDING;
-	ret->proto	= pt;
-
+	ret->flags	= 0;
+	
+	APE_SOCKET_SET_BITS(ret->flags, APE_SOCKET_TP_UNKNOWN);
+	APE_SOCKET_SET_BITS(ret->flags, APE_SOCKET_ST_PENDING);
+	
+	if (proto == SOCK_DGRAM) {
+		APE_SOCKET_SET_BITS(ret->flags, APE_SOCKET_PT_UDP);
+	} else {
+		APE_SOCKET_SET_BITS(ret->flags, APE_SOCKET_PT_TCP);
+	}
+	
+	
 	ret->callbacks.on_read 		= NULL;
 	ret->callbacks.on_disconnect 	= NULL;
 	ret->callbacks.on_connect	= NULL;
@@ -128,22 +126,21 @@ int APE_socket_listen(ape_socket *socket, uint16_t port, const char *local_ip, a
 	memset(&(addr.sin_zero), '\0', 8);
 	
 	setsockopt(socket->s.fd, SOL_SOCKET, SO_REUSEADDR, &reuse_addr, sizeof(int));
-	
+
 	if (bind(socket->s.fd, (struct sockaddr *)&addr, sizeof(struct sockaddr)) == -1 ||
-		(socket->proto == APE_SOCKET_TCP && /* only listen for STREAM socket */
+		(APE_SOCKET_HAS_BITS(socket->flags, APE_SOCKET_PT_TCP) && /* only listen for STREAM socket */
 		listen(socket->s.fd, APE_SOCKET_BACKLOG) == -1)) {
 		
 		close(socket->s.fd);
 		
 		return -1;
 	}
-	
-	socket->type  = APE_SOCKET_SERVER;
-	socket->state = APE_SOCKET_ONLINE;
+
+	APE_SOCKET_SET_BITS(socket->flags, APE_SOCKET_TP_SERVER);
+	APE_SOCKET_SET_BITS(socket->flags, APE_SOCKET_ST_ONLINE);
 	
 	events_add(socket->s.fd, socket, EVENT_READ|EVENT_WRITE, ape);
-	printf("Open socket on %i\n", socket->s.fd);
-	
+
 	return 0;
 	
 }
@@ -169,8 +166,9 @@ static int ape_socket_connect_ready_to_connect(const char *remote_ip, void *arg,
 		APE_socket_destroy(socket, ape);
 		return -1;
 	}
-	socket->type  = APE_SOCKET_CLIENT;
-	socket->state = APE_SOCKET_PROGRESS;
+
+	APE_SOCKET_SET_BITS(socket->flags, APE_SOCKET_TP_CLIENT);
+	APE_SOCKET_SET_BITS(socket->flags, APE_SOCKET_ST_PROGRESS);	
 	
 	events_add(socket->s.fd, socket, EVENT_READ|EVENT_WRITE, ape);
 	
@@ -191,17 +189,31 @@ int APE_socket_connect(ape_socket *socket, uint16_t port, const char *remote_ip_
 	return 0;
 }
 
+int APE_socket_write(ape_socket *socket, const char *data, size_t len, ape_global *ape)
+{
+	if (!APE_SOCKET_HAS_BITS(socket->flags, APE_SOCKET_ST_ONLINE) || len == 0) {
+		return 0;
+	}
+	
+}
+
 int APE_socket_destroy(ape_socket *socket, ape_global *ape)
 {
 	buffer_delete(&socket->data_in);
 	buffer_delete(&socket->data_out);
+
+	APE_SOCKET_SET_BITS(socket->flags, APE_SOCKET_ST_OFFLINE);
 	
-	socket->state = APE_SOCKET_OFFLINE;
 	close(socket->s.fd);
 	#if 0
 	events_del(socket->s.fd, ape);
 	#endif
 	free(socket);
+}
+
+inline static ape_socket_queue_data(ape_socket *socket, const char *data, size_t len)
+{
+	
 }
 
 inline int ape_socket_accept(ape_socket *socket, ape_global *ape)
@@ -217,11 +229,18 @@ inline int ape_socket_accept(ape_socket *socket, ape_global *ape)
 			
 		if (fd == -1) break; /* EAGAIN ? */
 		
-		client 			= APE_socket_new(socket->proto, fd);
-		client->type 		= APE_SOCKET_CLIENT;
-		client->state		= APE_SOCKET_ONLINE;
+		if (APE_SOCKET_HAS_BITS(socket->flags, APE_SOCKET_PT_UDP)) {
+			client 		= APE_socket_new(APE_SOCKET_PT_UDP, fd);
+		} else {
+			client 		= APE_socket_new(APE_SOCKET_PT_TCP, fd);
+		}
+		
+		client->flags		= 0;
 		client->callbacks 	= socket->callbacks; /* clients inherits server callbacks */
 		
+		APE_SOCKET_SET_BITS(client->flags, APE_SOCKET_ST_ONLINE);
+		APE_SOCKET_SET_BITS(client->flags, APE_SOCKET_TP_CLIENT);
+				
 		events_add(client->s.fd, client, EVENT_READ|EVENT_WRITE, ape);
 		
 		if (socket->callbacks.on_connect != NULL) {
