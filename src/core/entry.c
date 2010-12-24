@@ -85,8 +85,6 @@ int main(int argc, char **argv)
 		}
 	}
 	
-	ape->conf = ape_read_config("../../etc/ape.conf");
-	
 	events_loop(ape);
 	
 	return 0;

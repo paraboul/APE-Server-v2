@@ -44,11 +44,11 @@ static int ape_http_callback(void *ctx, callback_type type, int value, uint32_t 
 			client->http.path = buffer_new(32);
 			break;
 		case HTTP_PATH_CHAR:
-			printf("PathChar %c\n", (unsigned char)value);
+			//printf("PathChar %c\n", (unsigned char)value);
 			buffer_append_char(client->http.path, (unsigned char)value);
 			break;
 		case HTTP_QS_CHAR:
-			printf("QS %c\n", (unsigned char)value);
+			//printf("QS %c\n", (unsigned char)value);
 			if (client->http.method == HTTP_GET && 
 				APE_TRANSPORT_QS_ISJSON(client->http.transport) && 
 				client->json.parser != NULL) {
@@ -62,7 +62,7 @@ static int ape_http_callback(void *ctx, callback_type type, int value, uint32_t 
 			}
 			break;
 		case HTTP_BODY_CHAR:
-			printf("Body char : %c\n", (unsigned char)value);
+			//printf("Body char : %c\n", (unsigned char)value);
 			if (APE_TRANSPORT_QS_ISJSON(client->http.transport) && 
 				client->json.parser != NULL) {
 				if (!JSON_parser_char(client->json.parser, (unsigned char)value)) {
@@ -106,7 +106,8 @@ static int ape_http_callback(void *ctx, callback_type type, int value, uint32_t 
 			//ape_socket_write_file(client->socket, client->http.path->data, NULL);
 			break;
 		case HTTP_READY:
-			printf("HTTP is ready !\n");
+			/* TODO : proceed */
+			//shutdown(client->socket->s.fd, 2);
 			break;
 		default:
 			break;

@@ -38,7 +38,11 @@ void events_loop(ape_global *ape)
 					}
 					
 					if (bitev & EVENT_WRITE) {
-						if (APE_SOCKET_HAS_BITS(APE_SOCKET(attach)->flags, APE_SOCKET_ST_PROGRESS)) {
+ 						if (APE_SOCKET_HAS_BITS(APE_SOCKET(attach)->flags, APE_SOCKET_ST_ONLINE)) {
+							APE_SOCKET_UNSET_BITS(APE_SOCKET(attach)->flags, APE_SOCKET_WOULD_BLOCK);
+							
+							//printf("[Socket] Rdy to send %i\n", APE_SOCKET(attach)->s.fd);
+						} else if (APE_SOCKET_HAS_BITS(APE_SOCKET(attach)->flags, APE_SOCKET_ST_PROGRESS)) {
 							int serror = 0, ret;
 							socklen_t serror_len = sizeof(serror);
 							
@@ -51,9 +55,6 @@ void events_loop(ape_global *ape)
 							} else {
 								printf("Failed to connect\n");
 							}
-						} else if (APE_SOCKET_HAS_BITS(APE_SOCKET(attach)->flags, APE_SOCKET_ST_ONLINE)) {
-							/* Do we have something to send ? */
-							printf("[Socket] Rdy to send %i\n", APE_SOCKET(attach)->s.fd);
 						}
 					}
 				} else if (APE_SOCKET_HAS_BITS(APE_SOCKET(attach)->flags, APE_SOCKET_TP_UNKNOWN)) {

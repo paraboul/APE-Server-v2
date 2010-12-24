@@ -51,6 +51,7 @@ static inline int setnonblocking(int fd)
 
 #endif
 
+static ape_socket_jobs_t *ape_socket_new_jobs(size_t n);
 
 ape_socket *APE_socket_new(uint32_t pt, int from)
 {
@@ -105,6 +106,9 @@ ape_socket *APE_socket_new(uint32_t pt, int from)
 	buffer_init(&ret->data_in);
 	buffer_init(&ret->data_out);
 	
+	ret->jobs.list = ape_socket_new_jobs(2);
+	ret->jobs.last = &ret->jobs.list[1];
+
 	ret->file_out.fd 	= 0;
 	ret->file_out.offset 	= 0;
 	
@@ -191,10 +195,15 @@ int APE_socket_connect(ape_socket *socket, uint16_t port, const char *remote_ip_
 
 int APE_socket_write(ape_socket *socket, const char *data, size_t len, ape_global *ape)
 {
+
 	if (!APE_SOCKET_HAS_BITS(socket->flags, APE_SOCKET_ST_ONLINE) || len == 0) {
 		return 0;
 	}
-	
+
+	if (APE_SOCKET_HAS_BITS(socket->flags, APE_SOCKET_WOULD_BLOCK)) {
+		//ape_socket_queue_data(socket, data, len);
+		return 0;
+	}		
 }
 
 int APE_socket_destroy(ape_socket *socket, ape_global *ape)
@@ -205,14 +214,52 @@ int APE_socket_destroy(ape_socket *socket, ape_global *ape)
 	APE_SOCKET_SET_BITS(socket->flags, APE_SOCKET_ST_OFFLINE);
 	
 	close(socket->s.fd);
-	#if 0
-	events_del(socket->s.fd, ape);
-	#endif
+	
+	if (socket->jobs.last != NULL) {
+		ape_socket_jobs_t *jobs = socket->jobs.list, *tJobs = NULL;
+		
+		while (jobs != NULL) {
+			/* TODO : callback ? */
+			if (jobs->start) {
+				if (tJobs != NULL) {
+					free(tJobs);
+				}
+				tJobs = jobs;
+			}
+			jobs = jobs->next;
+		}
+		if (tJobs != NULL) {
+			free(tJobs);
+		}
+	}
+
 	free(socket);
 }
 
-inline static ape_socket_queue_data(ape_socket *socket, const char *data, size_t len)
+static ape_socket_jobs_t *ape_socket_new_jobs(size_t n)
 {
+	int i;
+	ape_socket_jobs_t *jobs = malloc(sizeof(*jobs) * n);
+	
+	for (i = 0; i < n; i++) {
+		jobs[i].next = (i == n-1 ? NULL : &jobs[i+1]); /* contiguous blocks */
+		jobs[i].ptr = NULL;
+		jobs[i].dowhat = APE_SOCKET_JOB_WRITEV;
+		jobs[i].start = (i == 0);
+	}
+	
+	return jobs;
+}
+
+inline static int ape_socket_queue_data(ape_socket *socket, const char *data, size_t len)
+{
+	if (socket->jobs.last->dowhat == APE_SOCKET_JOB_SHUTDOWN) { /* socket is about to close, don't queue */
+		return 0;
+	}
+	if (socket->jobs.last->dowhat != APE_SOCKET_JOB_WRITEV) { /* cannot push the data to the last queued job (i.e. sendfile) */
+		socket->jobs.last->next = ape_socket_new_jobs(1);
+		socket->jobs.last 	= socket->jobs.last->next;
+	}
 	
 }
 
@@ -257,6 +304,7 @@ inline int ape_socket_read(ape_socket *socket, ape_global *ape)
 	ssize_t nread;
 	
 	do {
+		/* TODO : avoid extra calling (avoid realloc) */
 		buffer_prepare(&socket->data_in, 2048);
 
 		nread = read(socket->s.fd, 

@@ -48,8 +48,11 @@
 #endif
 
 
+#define APE_SOCKET_UNSET_BITS(bits, mask) bits = bits & mask & 0x00 /* sry */
 #define APE_SOCKET_SET_BITS(bits, mask) bits = bits & mask
 #define APE_SOCKET_HAS_BITS(bits, mask) (bits & (0x00 & mask))
+
+#define APE_SOCKET_WOULD_BLOCK	0x00FFFFFF | (0x01 << 24)
 
 #define APE_SOCKET_PT_TCP 	0xFF00FFFF | (0x01 << 16)
 #define APE_SOCKET_PT_UDP 	0xFF00FFFF | (0x02 << 16)
@@ -72,11 +75,29 @@ typedef struct {
 	void (*on_connect)	(ape_socket *, ape_global *);
 } ape_socket_callbacks;
 
+typedef enum {
+	APE_SOCKET_JOB_WRITEV,
+	APE_SOCKET_JOB_SENDFILE,
+	APE_SOCKET_JOB_SHUTDOWN
+} ape_socket_jobs_l;
+
+typedef struct _ape_socket_jobs {
+	void *ptr; /* public */
+	struct _ape_socket_jobs *next;
+	ape_socket_jobs_l dowhat;
+	int start;
+} ape_socket_jobs_t;
+
 struct _ape_socket {
 	ape_fds s;
 	
 	buffer data_in;
 	buffer data_out;
+	
+	struct {
+		ape_socket_jobs_t *list;
+		ape_socket_jobs_t *last;
+	} jobs;
 	
 	struct {
 		int fd;
