@@ -3,6 +3,7 @@
 
 #include "common.h"
 #include "buffer.h"
+#include "ape_pool.h"
 
 #ifdef __WIN32
 
@@ -75,18 +76,16 @@ typedef struct {
 	void (*on_connect)	(ape_socket *, ape_global *);
 } ape_socket_callbacks;
 
-typedef enum {
-	APE_SOCKET_JOB_WRITEV,
-	APE_SOCKET_JOB_SENDFILE,
-	APE_SOCKET_JOB_SHUTDOWN
-} ape_socket_jobs_l;
 
-typedef struct _ape_socket_jobs {
-	void *ptr; /* public */
-	struct _ape_socket_jobs *next;
-	ape_socket_jobs_l dowhat;
-	int start;
-} ape_socket_jobs_t;
+/* Jobs pool */
+/* (1 << 0) is reserved */
+#define APE_SOCKET_JOB_WRITEV (1 << 1)
+#define APE_SOCKET_JOB_SENDFILE (1 << 2)
+#define APE_SOCKET_JOB_SHUTDOWN (1 << 3)
+#define APE_SOCKET_JOB_ACTIVE (1 << 4)
+
+typedef ape_pool_t ape_socket_jobs_t;
+
 
 struct _ape_socket {
 	ape_fds s;
@@ -97,6 +96,9 @@ struct _ape_socket {
 	struct {
 		ape_socket_jobs_t *list;
 		ape_socket_jobs_t *last;
+		/*
+		TODO: add last active
+		*/
 	} jobs;
 	
 	struct {
@@ -112,10 +114,18 @@ struct _ape_socket {
 	uint16_t 		remote_port;
 };
 
+struct _ape_socket_packet {
+	char *ptr;
+	size_t len;
+	size_t offset;
+} typedef ape_socket_packet_t;
+
 ape_socket *APE_socket_new(uint32_t pt, int from);
 
 int APE_socket_listen(ape_socket *socket, uint16_t port, const char *local_ip, ape_global *ape);
 int APE_socket_connect(ape_socket *socket, uint16_t port, const char *remote_ip_host, ape_global *ape);
+int APE_socket_write(ape_socket *socket, char *data, size_t len);
+int APE_socket_destroy(ape_socket *socket, ape_global *ape);
 
 inline int ape_socket_accept(ape_socket *socket, ape_global *ape);
 inline int ape_socket_read(ape_socket *socket, ape_global *ape);

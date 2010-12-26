@@ -27,7 +27,6 @@ static void inotify_io(int fd, int ev, ape_global *ape)
 	for (cread = 0; cread < nread;) {
  		/* jump to the next element */	
 		struct inotify_event *cevent = ievent + cread;
-		
 		/* the size of the last member (name) depends on 'len' */
 		cread += sizeof(struct inotify_event) + cevent->len;
 	}

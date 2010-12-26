@@ -12,6 +12,8 @@
 
 #define ape_min(val1, val2)  ((val1 > val2) ? (val2) : (val1))
 #define ape_max(val1, val2)  ((val1 < val2) ? (val2) : (val1))
+#define CONST_STR_LEN(x) x, x ? sizeof(x) - 1 : 0
+#define CONST_STR_LEN2(x) x ? sizeof(x) - 1 : 0, x
 
 typedef struct _ape_global ape_global;
 

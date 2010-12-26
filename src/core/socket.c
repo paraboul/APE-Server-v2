@@ -20,6 +20,7 @@
 /* sock.c */
 
 #include "socket.h"
+#include "dns.h"
 
 #include <stdio.h>
 #include <sys/time.h>
@@ -29,29 +30,29 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <sys/uio.h>
 #include <sys/sendfile.h>
-
+#include <limits.h>
 
 /* 
 	Use only one syscall (ioctl) if FIONBIO is defined
 	It behaves the same for socket file descriptor to use either ioctl(...FIONBIO...) or fcntl(...O_NONBLOCK...)
 */
 #ifdef FIONBIO
-
 static inline int setnonblocking(int fd)
 {	
     int  ret = 1;
 
     return ioctl(fd, FIONBIO, &ret);	
 }
-
 #else
-
 #define setnonblocking(fd) fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK)
-
 #endif
 
-static ape_socket_jobs_t *ape_socket_new_jobs(size_t n);
+static ape_socket_jobs_t *ape_socket_new_jobs_queue(size_t n);
+static ape_socket_jobs_t *ape_socket_job_get_slot(ape_socket *socket, int type);
+static int ape_socket_queue_data(ape_socket *socket, const char *data, size_t len, int offset);
+
 
 ape_socket *APE_socket_new(uint32_t pt, int from)
 {
@@ -76,8 +77,8 @@ ape_socket *APE_socket_new(uint32_t pt, int from)
 
 	proto = (pt == ((uint32_t)APE_SOCKET_PT_UDP) ? SOCK_DGRAM : SOCK_STREAM);
 	
-	if (sock == 0 && 
-		(sock = socket(AF_INET /* TODO AF_INET6 */, proto, 0)) == -1 || 
+	if ((sock == 0 && 
+		(sock = socket(AF_INET /* TODO AF_INET6 */, proto, 0)) == -1) || 
 		setnonblocking(sock) == -1) {
 		return NULL;
 	}
@@ -106,8 +107,9 @@ ape_socket *APE_socket_new(uint32_t pt, int from)
 	buffer_init(&ret->data_in);
 	buffer_init(&ret->data_out);
 	
-	ret->jobs.list = ape_socket_new_jobs(2);
+	ret->jobs.list = ape_socket_new_jobs_queue(2);
 	ret->jobs.last = &ret->jobs.list[1];
+	
 
 	ret->file_out.fd 	= 0;
 	ret->file_out.offset 	= 0;
@@ -193,17 +195,37 @@ int APE_socket_connect(ape_socket *socket, uint16_t port, const char *remote_ip_
 	return 0;
 }
 
-int APE_socket_write(ape_socket *socket, const char *data, size_t len, ape_global *ape)
+int APE_socket_write(ape_socket *socket, char *data, size_t len)
 {
+	ssize_t t_bytes = 0, r_bytes = len, n = 0;
 
 	if (!APE_SOCKET_HAS_BITS(socket->flags, APE_SOCKET_ST_ONLINE) || len == 0) {
-		return 0;
+		return -1;
 	}
 
-	if (APE_SOCKET_HAS_BITS(socket->flags, APE_SOCKET_WOULD_BLOCK)) {
-		//ape_socket_queue_data(socket, data, len);
-		return 0;
-	}		
+	if (APE_SOCKET_HAS_BITS(socket->flags, APE_SOCKET_WOULD_BLOCK) /* || something in the queue */) {
+		ape_socket_queue_data(socket, data, len, 0);
+		printf("Would block\n");
+		return -1;
+	}
+	
+	while (t_bytes < len) {
+		if ((n = write(socket->s.fd, data + t_bytes, r_bytes)) < 0) {
+			if (errno == EAGAIN && r_bytes != 0) {
+				APE_SOCKET_SET_BITS(socket->flags, APE_SOCKET_WOULD_BLOCK);
+				ape_socket_queue_data(socket, data, len, t_bytes);
+				printf("Write not finished %d\n", r_bytes);
+				return r_bytes;
+			} else {
+				return -1;
+			}
+		}
+		
+		t_bytes += n;
+		r_bytes -= n;		
+	}
+	printf("Success %d\n", t_bytes);
+	return 0;
 }
 
 int APE_socket_destroy(ape_socket *socket, ape_global *ape)
@@ -215,53 +237,81 @@ int APE_socket_destroy(ape_socket *socket, ape_global *ape)
 	
 	close(socket->s.fd);
 	
-	if (socket->jobs.last != NULL) {
-		ape_socket_jobs_t *jobs = socket->jobs.list, *tJobs = NULL;
-		
-		while (jobs != NULL) {
-			/* TODO : callback ? */
-			if (jobs->start) {
-				if (tJobs != NULL) {
-					free(tJobs);
-				}
-				tJobs = jobs;
-			}
-			jobs = jobs->next;
-		}
-		if (tJobs != NULL) {
-			free(tJobs);
-		}
-	}
+	ape_destroy_pool(socket->jobs.list);
 
 	free(socket);
 }
 
-static ape_socket_jobs_t *ape_socket_new_jobs(size_t n)
+int ape_socket_do_jobs(ape_socket *socket)
 {
-	int i;
-	ape_socket_jobs_t *jobs = malloc(sizeof(*jobs) * n);
+
+#if defined(IOV_MAX)
+	const size_t max_chunks = IOV_MAX;
+#elif defined(MAX_IOVEC)
+	const size_t max_chunks = MAX_IOVEC;
+#elif defined(UIO_MAXIOV)
+	const size_t max_chunks = UIO_MAXIOV;
+#elif (defined(__FreeBSD__) && __FreeBSD_version < 500000) || defined(__DragonFly__) || defined(__APPLE__) 
+	const size_t max_chunks = 1024;
+#elif defined(_SC_IOV_MAX)
+	const size_t max_chunks = sysconf(_SC_IOV_MAX);
+#else
+#error "Cannot get the _SC_IOV_MAX value"
+#endif	
+	ape_socket_jobs_t *job;
+	struct iovec chunks[max_chunks];
 	
-	for (i = 0; i < n; i++) {
-		jobs[i].next = (i == n-1 ? NULL : &jobs[i+1]); /* contiguous blocks */
-		jobs[i].ptr = NULL;
-		jobs[i].dowhat = APE_SOCKET_JOB_WRITEV;
-		jobs[i].start = (i == 0);
+	job = socket->jobs.list;
+	
+	while(job != NULL && job->flags & APE_SOCKET_JOB_ACTIVE) {
+		#if 0
+		switch(job->dowhat) {
+			case APE_SOCKET_JOB_WRITEV:
+			
+			
+			break;
+			case APE_SOCKET_JOB_SENDFILE:
+					
+			break;
+			case APE_SOCKET_JOB_SHUTDOWN:
+
+			return 0;
+			break;
+		}
+		#endif
 	}
 	
-	return jobs;
+	return 0;
+	
 }
 
-inline static int ape_socket_queue_data(ape_socket *socket, const char *data, size_t len)
+static int ape_socket_queue_data(ape_socket *socket, const char *data, size_t len, int offset)
 {
-	if (socket->jobs.last->dowhat == APE_SOCKET_JOB_SHUTDOWN) { /* socket is about to close, don't queue */
+	ape_socket_jobs_t *job;
+	
+	/* socket is about to close, don't queue */
+	if (socket->jobs.last->flags & APE_SOCKET_JOB_SHUTDOWN /* TODO: replace this to get the last active */) {
 		return 0;
 	}
-	if (socket->jobs.last->dowhat != APE_SOCKET_JOB_WRITEV) { /* cannot push the data to the last queued job (i.e. sendfile) */
-		socket->jobs.last->next = ape_socket_new_jobs(1);
-		socket->jobs.last 	= socket->jobs.last->next;
+
+	job = ape_socket_job_get_slot(socket, APE_SOCKET_JOB_WRITEV);
+	if (job->ptr == NULL) {
+		
+		
 	}
 	
+	printf("[Job] first at %p\n", socket->jobs.list);
+	printf("[Job] added at %p (offset %d / len : %d)\n", job, offset, len);
+	
+	return 0;
 }
+
+
+static int ape_socket_queue_buffer(ape_socket *socket, buffer *b)
+{
+	return ape_socket_queue_data(socket, b->data, b->used, 0);
+}
+
 
 inline int ape_socket_accept(ape_socket *socket, ape_global *ape)
 {
@@ -314,7 +364,7 @@ inline int ape_socket_read(ape_socket *socket, ape_global *ape)
 		socket->data_in.used += ape_max(nread, 0);
 		
 	} while (nread > 0);
-	
+
 	if (socket->data_in.used != 0) {
 		//buffer_append_char(&socket->data_in, '\0');
 
@@ -364,6 +414,37 @@ int ape_socket_write_file(ape_socket *socket, const char *file, ape_global *ape)
 	return 1;
 }
 
+static ape_socket_jobs_t *ape_socket_job_get_slot(ape_socket *socket, int type)
+{
+	ape_socket_jobs_t *jobs = socket->jobs.list;
+	
+	if (socket->jobs.last->flags & APE_SOCKET_JOB_ACTIVE) {
+		/* If we request a write job we can push the data to the iov list */
+		if (type == APE_SOCKET_JOB_WRITEV) {
+			return socket->jobs.last;
+		}
+		/* no more slot, create a new one */
+		socket->jobs.last->next = ape_socket_new_jobs_queue(1);
+		socket->jobs.last = &socket->jobs.last->next[0];
+		jobs = socket->jobs.last;
+	} else {
+		/* looking for a place to go */
+		while(jobs != NULL) {
+			if (!(jobs->flags & APE_SOCKET_JOB_ACTIVE) || (type == APE_SOCKET_JOB_WRITEV)) break;
+			jobs = jobs->next;
+		}
+	}
+	
+	jobs->flags |= APE_SOCKET_JOB_ACTIVE | type;
+
+	return jobs;
+}
+
+static ape_socket_jobs_t *ape_socket_new_jobs_queue(size_t n)
+{
+	return ape_new_pool(n);
+
+}
 
 
 

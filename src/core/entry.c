@@ -6,6 +6,8 @@
 #include <stdio.h>
 #include <signal.h>
 #include <time.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 #include "hash.h"
 #include "socket.h"
@@ -15,9 +17,7 @@
 #include "modules.h"
 #include "ape_config.h"
 
-/*
-gcc -g *.c ../modules/*.c -I../core/ -I../../deps/ -I/usr/include/ ../../deps/c-ares/.libs/libcares.a ../../deps/confuse-2.7/src/.libs/libconfuse.a ../../deps/jsapi/src/libjs_static.a -lrt -lstdc++
-*/
+//gcc -g *.c ../modules/*.c -I../core/ -I../../deps/ -I/usr/include/ ../../deps/c-ares/.libs/libcares.a ../../deps/confuse-2.7/src/.libs/libconfuse.a ../../deps/jsapi/src/libjs_static.a -lrt -lstdc++
 
 static ape_global *ape_init()
 {
@@ -52,7 +52,6 @@ static ape_global *ape_init()
 	return ape;
 }
 
-
 int main(int argc, char **argv)
 {
 	ape_global *ape;
@@ -84,6 +83,8 @@ int main(int argc, char **argv)
 			printf("[Module] Failed to load %s\n", ape_modules[z]->name);
 		}
 	}
+
+	ape->conf = ape_read_config("../../etc/ape.conf");
 	
 	events_loop(ape);
 	

@@ -15,7 +15,7 @@ void events_loop(ape_global *ape)
 			continue;
 		}
 		for (i = 0; i < nfd; i++) {
-			
+			printf("Fd : %i\n", nfd);
 			attach 	= events_get_current_fd(&ape->events, i);
 			bitev 	= events_revent(&ape->events, i);
 			fd	= ((ape_fds *)attach)->fd; /* assuming that ape_fds is the first member */
@@ -40,7 +40,7 @@ void events_loop(ape_global *ape)
 					if (bitev & EVENT_WRITE) {
  						if (APE_SOCKET_HAS_BITS(APE_SOCKET(attach)->flags, APE_SOCKET_ST_ONLINE)) {
 							APE_SOCKET_UNSET_BITS(APE_SOCKET(attach)->flags, APE_SOCKET_WOULD_BLOCK);
-							
+							printf("[Socket] %d is writable\n", APE_SOCKET(attach)->s.fd);
 							//printf("[Socket] Rdy to send %i\n", APE_SOCKET(attach)->s.fd);
 						} else if (APE_SOCKET_HAS_BITS(APE_SOCKET(attach)->flags, APE_SOCKET_ST_PROGRESS)) {
 							int serror = 0, ret;

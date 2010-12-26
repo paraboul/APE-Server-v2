@@ -1,6 +1,20 @@
 #include "server.h"
 #include "http_parser.h"
 #include "JSON_parser.h"
+#include "ape_transports.h"
+
+
+
+static struct _ape_transports_s {
+	ape_transport_t type;
+	size_t len;
+	char path[12];
+} ape_transports_s[] = {
+	{APE_TRANSPORT_LP, CONST_STR_LEN2("/1/")},
+	{APE_TRANSPORT_WS, CONST_STR_LEN2("/2/")},
+	{APE_TRANSPORT_FT, CONST_STR_LEN2(APE_STATIC_URI)},
+	{APE_TRANSPORT_NU, CONST_STR_LEN2("")}
+};
 
 static ape_transport_t ape_get_transport(buffer *path)
 {
@@ -108,6 +122,11 @@ static int ape_http_callback(void *ctx, callback_type type, int value, uint32_t 
 		case HTTP_READY:
 			/* TODO : proceed */
 			//shutdown(client->socket->s.fd, 2);
+			{
+				char *foo = malloc(sizeof(*foo) * 800000);
+				memset(foo, 'a', 800000);
+				APE_socket_write(client->socket, foo, 800000);
+			}
 			break;
 		default:
 			break;
@@ -168,7 +187,7 @@ ape_server *ape_server_init(uint16_t port, const char *local_ip, ape_global *ape
 	
 	if ((socket = APE_socket_new(APE_SOCKET_PT_TCP, 0)) == NULL ||
 		APE_socket_listen(socket, port, local_ip, ape) != 0) {
-		APE_socket_destroy(socket);
+		APE_socket_destroy(socket, ape);
 		return NULL;
 	}
 

@@ -20,12 +20,12 @@ cfg_t *ape_read_config(const char *file)
 	cfg = cfg_init(opts, CFGF_NONE);
 	if (cfg_parse(cfg, file) != CFG_SUCCESS) {
 		printf("parse error\n");
-		return;
+		return 0;
 	}
 	
 	server = cfg_getsec(cfg, "server");
 	
-	printf("port : %i\n", cfg_getint(server, "port"));
+	printf("port : %ld\n", cfg_getint(server, "port"));
 	
 	printf("success\n");
 
