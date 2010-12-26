@@ -54,7 +54,7 @@ static ape_socket_jobs_t *ape_socket_job_get_slot(ape_socket *socket, int type);
 static int ape_socket_queue_data(ape_socket *socket, const char *data, size_t len, int offset);
 
 
-ape_socket *APE_socket_new(uint32_t pt, int from)
+ape_socket *APE_socket_new(uint8_t pt, int from)
 {
 	int sock = from, proto = SOCK_STREAM;
 	
@@ -75,7 +75,7 @@ ape_socket *APE_socket_new(uint32_t pt, int from)
 	/* TODO WSAClean et al */
 #endif
 
-	proto = (pt == ((uint32_t)APE_SOCKET_PT_UDP) ? SOCK_DGRAM : SOCK_STREAM);
+	proto = (pt == APE_SOCKET_PT_UDP ? SOCK_DGRAM : SOCK_STREAM);
 	
 	if ((sock == 0 && 
 		(sock = socket(AF_INET /* TODO AF_INET6 */, proto, 0)) == -1) || 
@@ -83,20 +83,14 @@ ape_socket *APE_socket_new(uint32_t pt, int from)
 		return NULL;
 	}
 
-	ret 		= malloc(sizeof(*ret));
-	ret->s.fd 	= sock;
-	ret->s.type	= APE_SOCKET;
-	ret->flags	= 0;
-	
-	APE_SOCKET_SET_BITS(ret->flags, APE_SOCKET_TP_UNKNOWN);
-	APE_SOCKET_SET_BITS(ret->flags, APE_SOCKET_ST_PENDING);
-	
-	if (proto == SOCK_DGRAM) {
-		APE_SOCKET_SET_BITS(ret->flags, APE_SOCKET_PT_UDP);
-	} else {
-		APE_SOCKET_SET_BITS(ret->flags, APE_SOCKET_PT_TCP);
-	}
-	
+	ret 			= malloc(sizeof(*ret));
+	ret->s.fd 		= sock;
+	ret->s.type		= APE_SOCKET;
+	ret->states.flags 	= 0;
+	ret->states.type 	= APE_SOCKET_TP_UNKNOWN;
+	ret->states.state 	= APE_SOCKET_ST_PENDING;
+	ret->states.proto 	= pt;
+
 	
 	ret->callbacks.on_read 		= NULL;
 	ret->callbacks.on_disconnect 	= NULL;
@@ -117,7 +111,8 @@ ape_socket *APE_socket_new(uint32_t pt, int from)
 	return ret;
 }
 
-int APE_socket_listen(ape_socket *socket, uint16_t port, const char *local_ip, ape_global *ape)
+int APE_socket_listen(ape_socket *socket, uint16_t port, 
+		const char *local_ip, ape_global *ape)
 {
 	struct sockaddr_in addr;
 	int reuse_addr = 1;
@@ -134,16 +129,16 @@ int APE_socket_listen(ape_socket *socket, uint16_t port, const char *local_ip, a
 	setsockopt(socket->s.fd, SOL_SOCKET, SO_REUSEADDR, &reuse_addr, sizeof(int));
 
 	if (bind(socket->s.fd, (struct sockaddr *)&addr, sizeof(struct sockaddr)) == -1 ||
-		(APE_SOCKET_HAS_BITS(socket->flags, APE_SOCKET_PT_TCP) && /* only listen for STREAM socket */
+		(socket->states.proto == APE_SOCKET_PT_TCP && /* only listen for STREAM socket */
 		listen(socket->s.fd, APE_SOCKET_BACKLOG) == -1)) {
 		
 		close(socket->s.fd);
 		
 		return -1;
 	}
-
-	APE_SOCKET_SET_BITS(socket->flags, APE_SOCKET_TP_SERVER);
-	APE_SOCKET_SET_BITS(socket->flags, APE_SOCKET_ST_ONLINE);
+	
+	socket->states.type = APE_SOCKET_TP_SERVER;
+	socket->states.state = APE_SOCKET_ST_ONLINE;
 	
 	events_add(socket->s.fd, socket, EVENT_READ|EVENT_WRITE, ape);
 
@@ -151,7 +146,8 @@ int APE_socket_listen(ape_socket *socket, uint16_t port, const char *local_ip, a
 	
 }
 
-static int ape_socket_connect_ready_to_connect(const char *remote_ip, void *arg, int status, ape_global *ape)
+static int ape_socket_connect_ready_to_connect(const char *remote_ip, 
+		void *arg, int status, ape_global *ape)
 {
 	ape_socket *socket = arg;
 	struct sockaddr_in addr;
@@ -172,9 +168,9 @@ static int ape_socket_connect_ready_to_connect(const char *remote_ip, void *arg,
 		APE_socket_destroy(socket, ape);
 		return -1;
 	}
-
-	APE_SOCKET_SET_BITS(socket->flags, APE_SOCKET_TP_CLIENT);
-	APE_SOCKET_SET_BITS(socket->flags, APE_SOCKET_ST_PROGRESS);	
+	
+	socket->states.type = APE_SOCKET_TP_CLIENT;
+	socket->states.state = APE_SOCKET_ST_PROGRESS;
 	
 	events_add(socket->s.fd, socket, EVENT_READ|EVENT_WRITE, ape);
 	
@@ -182,7 +178,8 @@ static int ape_socket_connect_ready_to_connect(const char *remote_ip, void *arg,
 	
 }
 
-int APE_socket_connect(ape_socket *socket, uint16_t port, const char *remote_ip_host, ape_global *ape)
+int APE_socket_connect(ape_socket *socket, uint16_t port, 
+		const char *remote_ip_host, ape_global *ape)
 {
 	if (port == 0 || port > 65535) {
 		APE_socket_destroy(socket, ape);
@@ -199,11 +196,12 @@ int APE_socket_write(ape_socket *socket, char *data, size_t len)
 {
 	ssize_t t_bytes = 0, r_bytes = len, n = 0;
 
-	if (!APE_SOCKET_HAS_BITS(socket->flags, APE_SOCKET_ST_ONLINE) || len == 0) {
+	if (socket->states.state != APE_SOCKET_ST_ONLINE || 
+			len == 0) {
 		return -1;
 	}
 
-	if (APE_SOCKET_HAS_BITS(socket->flags, APE_SOCKET_WOULD_BLOCK) /* || something in the queue */) {
+	if (socket->states.flags & APE_SOCKET_WOULD_BLOCK /* || something in the queue */) {
 		ape_socket_queue_data(socket, data, len, 0);
 		printf("Would block\n");
 		return -1;
@@ -212,7 +210,7 @@ int APE_socket_write(ape_socket *socket, char *data, size_t len)
 	while (t_bytes < len) {
 		if ((n = write(socket->s.fd, data + t_bytes, r_bytes)) < 0) {
 			if (errno == EAGAIN && r_bytes != 0) {
-				APE_SOCKET_SET_BITS(socket->flags, APE_SOCKET_WOULD_BLOCK);
+				socket->states.flags |= APE_SOCKET_WOULD_BLOCK;
 				ape_socket_queue_data(socket, data, len, t_bytes);
 				printf("Write not finished %d\n", r_bytes);
 				return r_bytes;
@@ -232,8 +230,8 @@ int APE_socket_destroy(ape_socket *socket, ape_global *ape)
 {
 	buffer_delete(&socket->data_in);
 	buffer_delete(&socket->data_out);
-
-	APE_SOCKET_SET_BITS(socket->flags, APE_SOCKET_ST_OFFLINE);
+	
+	socket->states.state = APE_SOCKET_ST_OFFLINE;
 	
 	close(socket->s.fd);
 	
@@ -285,7 +283,8 @@ int ape_socket_do_jobs(ape_socket *socket)
 	
 }
 
-static int ape_socket_queue_data(ape_socket *socket, const char *data, size_t len, int offset)
+static int ape_socket_queue_data(ape_socket *socket, 
+		const char *data, size_t len, int offset)
 {
 	ape_socket_jobs_t *job;
 	
@@ -325,18 +324,13 @@ inline int ape_socket_accept(ape_socket *socket, ape_global *ape)
 			(unsigned int *)&sin_size);
 			
 		if (fd == -1) break; /* EAGAIN ? */
-		
-		if (APE_SOCKET_HAS_BITS(socket->flags, APE_SOCKET_PT_UDP)) {
-			client 		= APE_socket_new(APE_SOCKET_PT_UDP, fd);
-		} else {
-			client 		= APE_socket_new(APE_SOCKET_PT_TCP, fd);
-		}
-		
-		client->flags		= 0;
+
+		client			= APE_socket_new(socket->states.proto, fd);
+
 		client->callbacks 	= socket->callbacks; /* clients inherits server callbacks */
 		
-		APE_SOCKET_SET_BITS(client->flags, APE_SOCKET_ST_ONLINE);
-		APE_SOCKET_SET_BITS(client->flags, APE_SOCKET_TP_CLIENT);
+		client->states.state = APE_SOCKET_ST_ONLINE;
+		client->states.type  = APE_SOCKET_TP_CLIENT;
 				
 		events_add(client->s.fd, client, EVENT_READ|EVENT_WRITE, ape);
 		
@@ -387,7 +381,8 @@ inline int ape_socket_read(ape_socket *socket, ape_global *ape)
 	return socket->data_in.used;
 }
 
-int ape_socket_write_file(ape_socket *socket, const char *file, ape_global *ape)
+int ape_socket_write_file(ape_socket *socket, 
+		const char *file, ape_global *ape)
 {
 	int fd, nwrite = 0;
 	off_t offset = 0;
@@ -430,7 +425,10 @@ static ape_socket_jobs_t *ape_socket_job_get_slot(ape_socket *socket, int type)
 	} else {
 		/* looking for a place to go */
 		while(jobs != NULL) {
-			if (!(jobs->flags & APE_SOCKET_JOB_ACTIVE) || (type == APE_SOCKET_JOB_WRITEV)) break;
+			if (!(jobs->flags & APE_SOCKET_JOB_ACTIVE) || 
+				(type == APE_SOCKET_JOB_WRITEV)) {
+					break;
+			}
 			jobs = jobs->next;
 		}
 	}

@@ -15,22 +15,21 @@ void events_loop(ape_global *ape)
 			continue;
 		}
 		for (i = 0; i < nfd; i++) {
-			printf("Fd : %i\n", nfd);
 			attach 	= events_get_current_fd(&ape->events, i);
 			bitev 	= events_revent(&ape->events, i);
 			fd	= ((ape_fds *)attach)->fd; /* assuming that ape_fds is the first member */
 			switch(((ape_fds *)attach)->type) {
 			
 			case APE_SOCKET:
-				if (APE_SOCKET_HAS_BITS(APE_SOCKET(attach)->flags, APE_SOCKET_TP_SERVER)) {
+				if (APE_SOCKET(attach)->states.type == APE_SOCKET_TP_SERVER) {
 					if (bitev & EVENT_READ) {
-						if (APE_SOCKET_HAS_BITS(APE_SOCKET(attach)->flags, APE_SOCKET_PT_TCP)) {
+						if (APE_SOCKET(attach)->states.proto == APE_SOCKET_PT_TCP) {
 							ape_socket_accept(APE_SOCKET(attach), ape);
 						} else {							
 							printf("read on UDP\n");
 						}
 					}
-				} else if (APE_SOCKET_HAS_BITS(APE_SOCKET(attach)->flags, APE_SOCKET_TP_CLIENT)) {
+				} else if (APE_SOCKET(attach)->states.type == APE_SOCKET_TP_CLIENT) {
 					if (bitev & EVENT_READ &&
 						ape_socket_read(APE_SOCKET(attach), ape) == -1) {
 						
@@ -38,18 +37,19 @@ void events_loop(ape_global *ape)
 					}
 					
 					if (bitev & EVENT_WRITE) {
- 						if (APE_SOCKET_HAS_BITS(APE_SOCKET(attach)->flags, APE_SOCKET_ST_ONLINE)) {
-							APE_SOCKET_UNSET_BITS(APE_SOCKET(attach)->flags, APE_SOCKET_WOULD_BLOCK);
+ 						if (APE_SOCKET(attach)->states.state == APE_SOCKET_ST_ONLINE) {
+ 							APE_SOCKET(attach)->states.flags &= ~APE_SOCKET_WOULD_BLOCK;
+
 							printf("[Socket] %d is writable\n", APE_SOCKET(attach)->s.fd);
 							//printf("[Socket] Rdy to send %i\n", APE_SOCKET(attach)->s.fd);
-						} else if (APE_SOCKET_HAS_BITS(APE_SOCKET(attach)->flags, APE_SOCKET_ST_PROGRESS)) {
+						} else if (APE_SOCKET(attach)->states.state == APE_SOCKET_ST_PROGRESS) {
 							int serror = 0, ret;
 							socklen_t serror_len = sizeof(serror);
 							
 							if ((ret = getsockopt(fd, SOL_SOCKET, SO_ERROR, &serror, &serror_len)) == 0 && 
 								serror == 0) {
 								
-								APE_SOCKET_SET_BITS(APE_SOCKET(attach)->flags, APE_SOCKET_ST_ONLINE);
+								APE_SOCKET(attach)->states.state = APE_SOCKET_ST_ONLINE;
 
 								printf("Success connect\n");
 							} else {
@@ -57,7 +57,7 @@ void events_loop(ape_global *ape)
 							}
 						}
 					}
-				} else if (APE_SOCKET_HAS_BITS(APE_SOCKET(attach)->flags, APE_SOCKET_TP_UNKNOWN)) {
+				} else if (APE_SOCKET(attach)->states.type == APE_SOCKET_TP_UNKNOWN) {
 					
 				}
 				

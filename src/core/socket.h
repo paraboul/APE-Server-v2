@@ -49,23 +49,28 @@
 #endif
 
 
-#define APE_SOCKET_UNSET_BITS(bits, mask) bits = bits & mask & 0x00 /* sry */
-#define APE_SOCKET_SET_BITS(bits, mask) bits = bits & mask
-#define APE_SOCKET_HAS_BITS(bits, mask) (bits & (0x00 & mask))
+enum ape_socket_flags {
+	APE_SOCKET_WOULD_BLOCK = (1 << 0)
+};
 
-#define APE_SOCKET_WOULD_BLOCK	0x00FFFFFF | (0x01 << 24)
+enum ape_socket_proto {
+	APE_SOCKET_PT_TCP,
+	APE_SOCKET_PT_UDP
+};
 
-#define APE_SOCKET_PT_TCP 	0xFF00FFFF | (0x01 << 16)
-#define APE_SOCKET_PT_UDP 	0xFF00FFFF | (0x02 << 16)
+enum ape_socket_type {
+	APE_SOCKET_TP_UNKNOWN,
+	APE_SOCKET_TP_SERVER,
+	APE_SOCKET_TP_CLIENT
+};
 
-#define APE_SOCKET_TP_UNKNOWN 	0xFFFF00FF | (0x01 << 8)
-#define APE_SOCKET_TP_SERVER 	0xFFFF00FF | (0x02 << 8)
-#define APE_SOCKET_TP_CLIENT 	0xFFFF00FF | (0x04 << 8)
+enum ape_socket_state {
+	APE_SOCKET_ST_ONLINE,
+	APE_SOCKET_ST_PROGRESS,
+	APE_SOCKET_ST_PENDING,
+	APE_SOCKET_ST_OFFLINE
+};
 
-#define APE_SOCKET_ST_ONLINE	0xFFFFFF00 | (0x01)
-#define APE_SOCKET_ST_PROGRESS	0xFFFFFF00 | (0x02)
-#define APE_SOCKET_ST_PENDING	0xFFFFFF00 | (0x04)
-#define APE_SOCKET_ST_OFFLINE	0xFFFFFF00 | (0x08)
 
 typedef struct _ape_socket ape_socket;
 
@@ -110,17 +115,24 @@ struct _ape_socket {
 	
 	ape_socket_callbacks 	callbacks;
 	
-	uint32_t		flags;
-	uint16_t 		remote_port;
+	struct {
+		uint8_t flags;
+		uint8_t proto;
+		uint8_t type;
+		uint8_t state;
+	} states;
+
+	uint16_t 	remote_port;
 };
 
 struct _ape_socket_packet {
 	char *ptr;
 	size_t len;
 	size_t offset;
+	int cleanup:1;
 } typedef ape_socket_packet_t;
 
-ape_socket *APE_socket_new(uint32_t pt, int from);
+ape_socket *APE_socket_new(uint8_t pt, int from);
 
 int APE_socket_listen(ape_socket *socket, uint16_t port, const char *local_ip, ape_global *ape);
 int APE_socket_connect(ape_socket *socket, uint16_t port, const char *remote_ip_host, ape_global *ape);
