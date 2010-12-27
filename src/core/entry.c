@@ -16,6 +16,7 @@
 #include "dns.h"
 #include "modules.h"
 #include "ape_config.h"
+#include "ape_pool.h"
 
 //gcc -g *.c ../modules/*.c -I../core/ -I../../deps/ -I/usr/include/ ../../deps/c-ares/.libs/libcares.a ../../deps/confuse-2.7/src/.libs/libconfuse.a ../../deps/jsapi/src/libjs_static.a -lrt -lstdc++
 
@@ -57,6 +58,8 @@ int main(int argc, char **argv)
 	ape_global *ape;
 	uint64_t h;
 	int z;
+	
+	ape_pool_t p[2];
 
 	if ((ape = ape_init()) == NULL) {
 		printf("Failed to init APE\n");
@@ -85,9 +88,9 @@ int main(int argc, char **argv)
 	}
 
 	ape->conf = ape_read_config("../../etc/ape.conf");
-
-	events_loop(ape);
 	
+	events_loop(ape);
+
 	return 0;
 }
 

@@ -52,6 +52,7 @@ static inline int setnonblocking(int fd)
 static ape_socket_jobs_t *ape_socket_new_jobs_queue(size_t n);
 static ape_socket_jobs_t *ape_socket_job_get_slot(ape_socket *socket, int type);
 static int ape_socket_queue_data(ape_socket *socket, const char *data, size_t len, int offset);
+static ape_socket_packet_t *ape_socket_new_packet_queue(size_t n);
 
 
 ape_socket *APE_socket_new(uint8_t pt, int from)
@@ -101,9 +102,10 @@ ape_socket *APE_socket_new(uint8_t pt, int from)
 	buffer_init(&ret->data_in);
 	buffer_init(&ret->data_out);
 	
-	ret->jobs.list = ape_socket_new_jobs_queue(2);
+	ret->jobs.list = ape_socket_new_jobs_queue(10);
 	ret->jobs.last = &ret->jobs.list[1];
 	
+	ape_socket_new_packet_queue(30);
 
 	ret->file_out.fd 	= 0;
 	ret->file_out.offset 	= 0;
@@ -296,7 +298,6 @@ static int ape_socket_queue_data(ape_socket *socket,
 	job = ape_socket_job_get_slot(socket, APE_SOCKET_JOB_WRITEV);
 	if (job->ptr == NULL) {
 		
-		
 	}
 	
 	printf("[Job] first at %p\n", socket->jobs.list);
@@ -440,8 +441,14 @@ static ape_socket_jobs_t *ape_socket_job_get_slot(ape_socket *socket, int type)
 
 static ape_socket_jobs_t *ape_socket_new_jobs_queue(size_t n)
 {
-	return ape_new_pool(n);
+	return (ape_socket_jobs_t *)ape_new_pool(sizeof(ape_socket_jobs_t), n);
 
+}
+
+static ape_socket_packet_t *ape_socket_new_packet_queue(size_t n)
+{
+	ape_socket_packet_t *packetq = (ape_socket_packet_t *)ape_new_pool(sizeof(ape_socket_packet_t), n);
+	
 }
 
 

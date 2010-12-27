@@ -126,11 +126,13 @@ struct _ape_socket {
 };
 
 struct _ape_socket_packet {
-	char *ptr;
+	/* inherit from ape_pool_t (same first sizeof(ape_pool_t) bytes memory-print) */
+	ape_pool_t pool;
 	size_t len;
 	size_t offset;
-	int cleanup:1;
+	int cleanup;
 } typedef ape_socket_packet_t;
+
 
 ape_socket *APE_socket_new(uint8_t pt, int from);
 
@@ -144,3 +146,4 @@ inline int ape_socket_read(ape_socket *socket, ape_global *ape);
 int ape_socket_write_file(ape_socket *socket, const char *file, ape_global *ape);
 
 #endif
+
