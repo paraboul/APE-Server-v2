@@ -91,7 +91,6 @@ typedef struct {
 
 typedef ape_pool_t ape_socket_jobs_t;
 
-
 struct _ape_socket {
 	ape_fds s;
 	
@@ -125,12 +124,13 @@ struct _ape_socket {
 	uint16_t 	remote_port;
 };
 
+#define APE_SOCKET_PACKET_FREE (1 << 1) 
+
 struct _ape_socket_packet {
 	/* inherit from ape_pool_t (same first sizeof(ape_pool_t) bytes memory-print) */
 	ape_pool_t pool;
 	size_t len;
 	size_t offset;
-	int cleanup;
 } typedef ape_socket_packet_t;
 
 
@@ -141,6 +141,7 @@ int APE_socket_connect(ape_socket *socket, uint16_t port, const char *remote_ip_
 int APE_socket_write(ape_socket *socket, char *data, size_t len);
 int APE_socket_destroy(ape_socket *socket, ape_global *ape);
 
+int ape_socket_do_jobs(ape_socket *socket);
 inline int ape_socket_accept(ape_socket *socket, ape_global *ape);
 inline int ape_socket_read(ape_socket *socket, ape_global *ape);
 int ape_socket_write_file(ape_socket *socket, const char *file, ape_global *ape);

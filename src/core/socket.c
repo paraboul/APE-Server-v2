@@ -51,7 +51,7 @@ static inline int setnonblocking(int fd)
 
 static ape_socket_jobs_t *ape_socket_new_jobs_queue(size_t n);
 static ape_socket_jobs_t *ape_socket_job_get_slot(ape_socket *socket, int type);
-static int ape_socket_queue_data(ape_socket *socket, const char *data, size_t len, int offset);
+static int ape_socket_queue_data(ape_socket *socket, char *data, size_t len, int offset);
 static ape_socket_packet_t *ape_socket_new_packet_queue(size_t n);
 
 
@@ -102,11 +102,9 @@ ape_socket *APE_socket_new(uint8_t pt, int from)
 	buffer_init(&ret->data_in);
 	buffer_init(&ret->data_out);
 	
-	ret->jobs.list = ape_socket_new_jobs_queue(10);
+	ret->jobs.list = ape_socket_new_jobs_queue(2);
 	ret->jobs.last = &ret->jobs.list[1];
 	
-	ape_socket_new_packet_queue(30);
-
 	ret->file_out.fd 	= 0;
 	ret->file_out.offset 	= 0;
 	
@@ -262,13 +260,26 @@ int ape_socket_do_jobs(ape_socket *socket)
 	struct iovec chunks[max_chunks];
 	
 	job = socket->jobs.list;
-	
 	while(job != NULL && job->flags & APE_SOCKET_JOB_ACTIVE) {
-		#if 0
-		switch(job->dowhat) {
+		switch(job->flags & ~(APE_POOL_ALL_FLAGS | APE_SOCKET_JOB_ACTIVE)) {
 			case APE_SOCKET_JOB_WRITEV:
-			
-			
+			{
+				int i;
+				ssize_t n;
+				ape_socket_packet_t *packet = job->ptr;
+				
+				for (i = 0; packet != NULL && i < max_chunks; i++) {
+					chunks[i].iov_base = packet->pool.ptr + packet->offset;
+					chunks[i].iov_len  = packet->len - packet->offset;
+					
+					packet = (ape_socket_packet_t *)packet->pool.next;
+				}
+				
+				n = writev(socket->s.fd, chunks, i);
+				
+				/* TODO: remove jobs */
+				printf("writev written : %d\n", n);
+			}
 			break;
 			case APE_SOCKET_JOB_SENDFILE:
 					
@@ -276,9 +287,12 @@ int ape_socket_do_jobs(ape_socket *socket)
 			case APE_SOCKET_JOB_SHUTDOWN:
 
 			return 0;
+			
+			default:
+				printf("[Job] :(\n");
 			break;
 		}
-		#endif
+		job = job->next;
 	}
 	
 	return 0;
@@ -286,9 +300,10 @@ int ape_socket_do_jobs(ape_socket *socket)
 }
 
 static int ape_socket_queue_data(ape_socket *socket, 
-		const char *data, size_t len, int offset)
+		char *data, size_t len, int offset)
 {
 	ape_socket_jobs_t *job;
+	ape_socket_packet_t *packets;
 	
 	/* socket is about to close, don't queue */
 	if (socket->jobs.last->flags & APE_SOCKET_JOB_SHUTDOWN /* TODO: replace this to get the last active */) {
@@ -296,8 +311,24 @@ static int ape_socket_queue_data(ape_socket *socket,
 	}
 
 	job = ape_socket_job_get_slot(socket, APE_SOCKET_JOB_WRITEV);
+	
 	if (job->ptr == NULL) {
-		
+		printf("[Job] empty writev found\n");
+		job->ptr = ape_socket_new_packet_queue(8);
+		packets = job->ptr;
+	}
+	
+	while(packets->pool.ptr != NULL) {
+		packets = (ape_socket_packet_t *)packets->pool.next;
+	}
+	
+	packets->pool.ptr = data;
+	packets->len 	= len;
+	packets->offset = offset;
+	
+	/* Always have spare slots */
+	if (packets->pool.next == NULL) {
+		packets->pool.next = (ape_pool_t *)ape_socket_new_packet_queue(8);
 	}
 	
 	printf("[Job] first at %p\n", socket->jobs.list);
@@ -416,7 +447,8 @@ static ape_socket_jobs_t *ape_socket_job_get_slot(ape_socket *socket, int type)
 	
 	if (socket->jobs.last->flags & APE_SOCKET_JOB_ACTIVE) {
 		/* If we request a write job we can push the data to the iov list */
-		if (type == APE_SOCKET_JOB_WRITEV) {
+		if (type == APE_SOCKET_JOB_WRITEV && 
+				socket->jobs.last->flags & APE_SOCKET_JOB_WRITEV) {
 			return socket->jobs.last;
 		}
 		/* no more slot, create a new one */
@@ -427,7 +459,8 @@ static ape_socket_jobs_t *ape_socket_job_get_slot(ape_socket *socket, int type)
 		/* looking for a place to go */
 		while(jobs != NULL) {
 			if (!(jobs->flags & APE_SOCKET_JOB_ACTIVE) || 
-				(type == APE_SOCKET_JOB_WRITEV)) {
+				(type == APE_SOCKET_JOB_WRITEV && 
+				jobs->flags & APE_SOCKET_JOB_WRITEV)) {
 					break;
 			}
 			jobs = jobs->next;

@@ -4,15 +4,13 @@
 ape_pool_t *ape_new_pool(size_t size, size_t n)
 {
 	int i;
-	ape_pool_t *pool = malloc(size * n);
+	ape_pool_t *pool = malloc(size * n), *current = NULL;
 	
 	for (i = 0; i < n; i++) {
-		/* Get the address of the current object */
-		ape_pool_t *current = ((void *)&pool[0])+(i*size);
-		
-		current->next = (i == n-1 ? NULL : ((void *)&pool[0])+((i+1)*size)); /* contiguous blocks */
-		current->ptr = NULL;
-		current->flags = (i == 0 ? APE_POOL_ALLOC : 0);
+		current 	= ((void *)&pool[0])+(i*size);
+		current->next 	= (i == n-1 ? NULL : ((void *)&pool[0])+((i+1)*size)); /* contiguous blocks */
+		current->ptr 	= NULL;
+		current->flags 	= (i == 0 ? APE_POOL_ALLOC : 0);
 	}
 	
 	return pool;
