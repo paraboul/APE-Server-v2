@@ -125,6 +125,7 @@ static int ape_http_callback(void *ctx, callback_type type, int value, uint32_t 
 			{
 				char *foo = malloc(sizeof(*foo) * 800000);
 				memset(foo, 'a', 800000);
+				printf("Writing something\n");
 				APE_socket_write(client->socket, foo, 800000);
 			}
 			break;

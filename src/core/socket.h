@@ -96,14 +96,8 @@ struct _ape_socket {
 	
 	buffer data_in;
 	buffer data_out;
-	
-	struct {
-		ape_socket_jobs_t *list;
-		ape_socket_jobs_t *last;
-		/*
-		TODO: add last active
-		*/
-	} jobs;
+
+	ape_pool_list_t jobs;
 	
 	struct {
 		int fd;
