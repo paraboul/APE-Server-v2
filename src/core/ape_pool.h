@@ -17,6 +17,7 @@ typedef struct _ape_pool_list {
 	ape_pool_t *head;
 	ape_pool_t *queue;
 	ape_pool_t *current;
+	ape_pool_t *pPool;
 } ape_pool_list_t;
 
 ape_pool_t *ape_new_pool(size_t size, size_t n);
@@ -26,5 +27,6 @@ ape_pool_t *ape_grow_pool(ape_pool_list_t *list, size_t size, size_t n);
 void ape_init_pool_list(ape_pool_list_t *list, size_t size, size_t n);
 void ape_destroy_pool(ape_pool_t *pool);
 void ape_destroy_pool_list(ape_pool_list_t *list);
+void ape_pool_head_to_queue(ape_pool_list_t *list);
 
 #endif

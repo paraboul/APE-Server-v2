@@ -212,7 +212,7 @@ int APE_socket_write(ape_socket *socket, char *data, size_t len)
 			if (errno == EAGAIN && r_bytes != 0) {
 				socket->states.flags |= APE_SOCKET_WOULD_BLOCK;
 				ape_socket_queue_data(socket, data, len, t_bytes);
-				printf("Write not finished %d\n", r_bytes);
+				printf("Write not finished %d (done : %d)\n", r_bytes, t_bytes);
 				return r_bytes;
 			} else {
 
@@ -223,7 +223,7 @@ int APE_socket_write(ape_socket *socket, char *data, size_t len)
 		t_bytes += n;
 		r_bytes -= n;		
 	}
-	printf("Success %d\n", t_bytes);
+	//printf("Success %d\n", t_bytes);
 	return 0;
 }
 
@@ -261,41 +261,60 @@ int ape_socket_do_jobs(ape_socket *socket)
 	struct iovec chunks[max_chunks];
 	
 	job = socket->jobs.head;
+	
+	printf("Jobs to do\n");
+	
 	while(job != NULL && job->flags & APE_SOCKET_JOB_ACTIVE) {
 		switch(job->flags & ~(APE_POOL_ALL_FLAGS | APE_SOCKET_JOB_ACTIVE)) {
 			case APE_SOCKET_JOB_WRITEV:
 			{
-				int i;
-				ssize_t n;
-				ape_socket_packet_t *packet = job->ptr;
-				printf("wut\n");
-				for (i = 0; packet != NULL && i < max_chunks;) {
+				int i, y;
+				ssize_t n, total_len = 0;
+				ape_socket_packet_t *packet = (ape_socket_packet_t *)((ape_pool_list_t *)job->ptr)->pPool;
 
+				for (i = 0; packet != NULL && i < max_chunks; i++) {
 					if (packet->pool.ptr == NULL) {
-						packet = (ape_socket_packet_t *)packet->pool.next;
-						continue;
+						break;
 					}
-					printf("while?\n");
 					chunks[i].iov_base = packet->pool.ptr + packet->offset;
 					chunks[i].iov_len  = packet->len - packet->offset;
 					
-					packet = (ape_socket_packet_t *)packet->pool.next;
+					//total_len += chunks[i].iov_len;
 					
-					/* TODO: rewrite the queue system (pool offset) */
-					i++;
+					packet = (ape_socket_packet_t *)packet->pool.next;
+
 				}
 				
-				while (1) {
-					n = writev(socket->s.fd, chunks, i);
-					if (n == -1) {
-						if (errno == EAGAIN) {
-							printf("EAGAIN\n");
-						}
-					}
-					printf("fail : %d\n", n);
+				n = writev(socket->s.fd, chunks, i);
+				if (n == -1) {
+					job = job->next;
+					continue;
 				}
+
+				for (packet = (ape_socket_packet_t *)((ape_pool_list_t *)job->ptr)->pPool; 
+						packet != NULL && packet->pool.ptr != NULL; 
+						packet = (ape_socket_packet_t *)packet->pool.next) {
+					
+					n -= packet->len - packet->offset;
+					
+					if (n == 0) {
+						
+						free(packet->pool.ptr);
+						packet->pool.ptr = NULL;
+						((ape_pool_list_t *)job->ptr)->pPool = ((ape_pool_list_t *)job->ptr)->head;
+						break;
+					}
+					if (n < 0) {
+						packet->offset = packet->len + n;
+						((ape_pool_list_t *)job->ptr)->pPool = (ape_pool_t *)packet;
+						break;
+					}
+					free(packet->pool.ptr);
+					packet->pool.ptr = NULL;
+				}
+
 				/* TODO: remove jobs */
-				printf("writev written : %d %d\n", i, n);
+				
 			}
 			break;
 			case APE_SOCKET_JOB_SENDFILE:
@@ -309,6 +328,7 @@ int ape_socket_do_jobs(ape_socket *socket)
 				printf("[Job] :(\n");
 			break;
 		}
+
 		job = job->next;
 	}
 	
@@ -330,7 +350,7 @@ static int ape_socket_queue_data(ape_socket *socket,
 
 	job = ape_socket_job_get_slot(socket, APE_SOCKET_JOB_WRITEV);
 	list = job->ptr;
-	
+
 	if (list == NULL) {
 		list = ape_socket_new_packet_queue(8);
 		job->ptr = list;
@@ -460,8 +480,11 @@ static ape_socket_jobs_t *ape_socket_job_get_slot(ape_socket *socket, int type)
 	ape_socket_jobs_t *jobs = socket->jobs.current;
 	
 	/* If we request a write job we can push the data to the iov list */
-	if (type == APE_SOCKET_JOB_WRITEV && 
-			jobs->flags & APE_SOCKET_JOB_WRITEV) {
+	if ((type == APE_SOCKET_JOB_WRITEV && 
+			jobs->flags & APE_SOCKET_JOB_WRITEV) ||
+			!(jobs->flags & APE_SOCKET_JOB_ACTIVE)) {
+			
+		jobs->flags |= APE_SOCKET_JOB_ACTIVE | type;
 		return jobs;
 	}
 	

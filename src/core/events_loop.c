@@ -44,7 +44,7 @@ void events_loop(ape_global *ape)
  						if (APE_SOCKET(attach)->states.state == APE_SOCKET_ST_ONLINE && 
  								!(APE_SOCKET(attach)->states.flags & APE_SOCKET_WOULD_BLOCK)) {
  							
- 							printf("[Socket] %d is writable\n", APE_SOCKET(attach)->s.fd);
+ 							//printf("[Socket] %d is writable\n", APE_SOCKET(attach)->s.fd);
 							ape_socket_do_jobs(APE_SOCKET(attach));						
 							//printf("[Socket] Rdy to send %i\n", APE_SOCKET(attach)->s.fd);
 						} else if (APE_SOCKET(attach)->states.state == APE_SOCKET_ST_PROGRESS) {

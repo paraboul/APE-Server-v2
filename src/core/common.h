@@ -15,6 +15,9 @@
 #define CONST_STR_LEN(x) x, x ? sizeof(x) - 1 : 0
 #define CONST_STR_LEN2(x) x ? sizeof(x) - 1 : 0, x
 
+#define _APE_ABS_MASK(val) (val >> sizeof(int) * 8 - 1)
+#define APE_ABS(val) (val + _APE_ABS_MASK(val)) ^ _APE_ABS_MASK(val)
+
 typedef struct _ape_global ape_global;
 
 #include "ape_config.h"
