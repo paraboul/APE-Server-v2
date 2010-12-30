@@ -123,10 +123,12 @@ static int ape_http_callback(void *ctx, callback_type type, int value, uint32_t 
 			/* TODO : proceed */
 			//shutdown(client->socket->s.fd, 2);
 			{
-				char *foo = malloc(sizeof(*foo) * 800000);
-				memset(foo, 'a', 800000);
-				printf("Writing something\n");
-				APE_socket_write(client->socket, foo, 800000);
+				char *foo = malloc(sizeof(*foo) * 512);
+				memset(foo, 0, 145);
+				
+				APE_sendfile(client->socket, "../../test/test.avi");
+				//APE_socket_write(client->socket, CONST_STR_LEN("fuuu"));
+				APE_socket_shutdown(client->socket);
 			}
 			break;
 		default:
