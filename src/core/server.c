@@ -58,7 +58,6 @@ static int ape_http_callback(void *ctx, callback_type type, int value, uint32_t 
 			client->http.path = buffer_new(32);
 			break;
 		case HTTP_PATH_CHAR:
-			//printf("PathChar %c\n", (unsigned char)value);
 			buffer_append_char(client->http.path, (unsigned char)value);
 			break;
 		case HTTP_QS_CHAR:
@@ -123,11 +122,10 @@ static int ape_http_callback(void *ctx, callback_type type, int value, uint32_t 
 			/* TODO : proceed */
 			//shutdown(client->socket->s.fd, 2);
 			{
-				char *foo = malloc(sizeof(*foo) * 512);
-				memset(foo, 0, 145);
-				
-				APE_sendfile(client->socket, "../../test/test.avi");
-				//APE_socket_write(client->socket, CONST_STR_LEN("fuuu"));
+				buffer *head = buffer_new(144);
+				buffer_append_string_n(head, "HTTP/1.1 200 OK\r\nPragma: no-cache\r\nCache-Control: no-cache, must-revalidate\r\nExpires: Thu, 27 Dec 1986 07:30:00 GMT\r\nContent-Type: text/html\r\n\r\n", 144);
+				APE_socket_write(client->socket, head->data, head->used);
+				APE_sendfile(client->socket, &client->http.path->data[1]);
 				APE_socket_shutdown(client->socket);
 			}
 			break;

@@ -18,6 +18,7 @@ void events_loop(ape_global *ape)
 			attach 	= events_get_current_fd(&ape->events, i);
 			bitev 	= events_revent(&ape->events, i);
 			fd	= ((ape_fds *)attach)->fd; /* assuming that ape_fds is the first member */
+			
 			switch(((ape_fds *)attach)->type) {
 			
 			case APE_SOCKET:
@@ -30,6 +31,7 @@ void events_loop(ape_global *ape)
 						}
 					}
 				} else if (APE_SOCKET(attach)->states.type == APE_SOCKET_TP_CLIENT) {
+
 					if (bitev & EVENT_WRITE) {
 						APE_SOCKET(attach)->states.flags &= ~APE_SOCKET_WOULD_BLOCK;
 					}

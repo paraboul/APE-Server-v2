@@ -46,6 +46,27 @@ ape_pool_t *ape_pool_head_to_queue(ape_pool_list_t *list)
 	return list->head;
 }
 
+ape_pool_t *ape_pool_head_to_current(ape_pool_list_t *list)
+{
+	ape_pool_t *head = list->head;
+	
+	if (head == list->current) {
+		return head;
+	}
+
+	list->head = head->next;
+	head->next = list->current->next;
+	list->current->next = head;
+	list->current = head;
+	
+	if (head->next == NULL) {
+		list->queue = head;
+	}
+	
+	return list->head;
+	
+}
+
 ape_pool_t *ape_grow_pool(ape_pool_list_t *list, size_t size, size_t n)
 {
 	ape_pool_t *pool;
@@ -81,7 +102,7 @@ void ape_destroy_pool_ordered(ape_pool_t *pool)
 void ape_destroy_pool(ape_pool_t *pool)
 {
 	ape_pool_t *tPool = NULL, *fPool = NULL;
-	
+		
 	while (pool != NULL) {
 		/* TODO : callback ? (cleaner) */
 		if (pool->flags & APE_POOL_ALLOC) {
@@ -99,6 +120,7 @@ void ape_destroy_pool(ape_pool_t *pool)
 		}
 		pool = pool->next;
 	}
+
 	fPool->next = NULL;
 	pool = tPool;
 	
