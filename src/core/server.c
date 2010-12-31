@@ -46,91 +46,85 @@ static int ape_http_callback(void *ctx, callback_type type, int value, uint32_t 
 	ape_client *client = (ape_client *)ctx;
 	
 	switch(type) {
-		case HTTP_METHOD:
-			switch(value) {
-				case HTTP_GET:
-					client->http.method = HTTP_GET;
-					break;
-				case HTTP_POST:
-					client->http.method = HTTP_POST;
-					break;
-			}
-			client->http.path = buffer_new(32);
-			break;
-		case HTTP_PATH_CHAR:
-			buffer_append_char(client->http.path, (unsigned char)value);
-			break;
-		case HTTP_QS_CHAR:
-			//printf("QS %c\n", (unsigned char)value);
-			if (client->http.method == HTTP_GET && 
-				APE_TRANSPORT_QS_ISJSON(client->http.transport) && 
-				client->json.parser != NULL) {
-				
-				if (!JSON_parser_char(client->json.parser, (unsigned char)value)) {
-					printf("Bad JSON\n");
-				}
-			} else {
-				
-				/* bufferize */
-			}
-			break;
-		case HTTP_BODY_CHAR:
-			//printf("Body char : %c\n", (unsigned char)value);
-			if (APE_TRANSPORT_QS_ISJSON(client->http.transport) && 
-				client->json.parser != NULL) {
-				if (!JSON_parser_char(client->json.parser, (unsigned char)value)) {
-					printf("Bad JSON\n");
-				}
-			} 
-			break;
-		case HTTP_PATH_END:
-			buffer_append_char(client->http.path, '\0');
-			client->http.transport = ape_get_transport(client->http.path);
+	case HTTP_METHOD:
+		switch(value) {
+			case HTTP_GET:
+				client->http.method = HTTP_GET;
+				break;
+			case HTTP_POST:
+				client->http.method = HTTP_POST;
+				break;
+		}
+		client->http.path = buffer_new(32);
+		break;
+	case HTTP_PATH_CHAR:
+		buffer_append_char(client->http.path, (unsigned char)value);
+		break;
+	case HTTP_QS_CHAR:
+		//printf("QS %c\n", (unsigned char)value);
+		if (client->http.method == HTTP_GET && 
+			APE_TRANSPORT_QS_ISJSON(client->http.transport) && 
+			client->json.parser != NULL) {
 			
-			if (APE_TRANSPORT_QS_ISJSON(client->http.transport)) {
-				JSON_config config;
-				init_JSON_config(&config);
-				config.depth		= 15;
-				config.callback		= NULL;
-				config.callback_ctx	= NULL;
-				config.allow_comments	= 0;
-				config.handle_floats_manually = 0;
-			
-				client->json.parser = new_JSON_parser(&config);				
+			if (!JSON_parser_char(client->json.parser, (unsigned char)value)) {
+				printf("Bad JSON\n");
 			}
-			break;
-		case HTTP_VERSION_MINOR:		
+		} else {
 			
-			/* fall through */
-		case HTTP_VERSION_MAJOR:
-		//	printf("Version detected %i\n", value);
-			break;
-		case HTTP_HEADER_KEY:
-		//	printf("Header key\n");
-			break;
-		case HTTP_HEADER_VAL:
-		//	printf("Header value\n");
-			break;
-		case HTTP_CL_VAL:
-		//	printf("CL value : %i\n", value);
-			break;
-		case HTTP_HEADER_END:
-		//	printf("--------- HEADERS END ---------\n");
-			//ape_socket_write_file(client->socket, client->http.path->data, NULL);
-			break;
-		case HTTP_READY:
-			/* TODO : proceed */
-			//shutdown(client->socket->s.fd, 2);
-			{
-				buffer *head = buffer_new(144);
-				buffer_append_string_n(head, "HTTP/1.1 200 OK\r\nPragma: no-cache\r\nCache-Control: no-cache, must-revalidate\r\nExpires: Thu, 27 Dec 1986 07:30:00 GMT\r\nContent-Type: text/html\r\n\r\n", 144);
-				APE_socket_write(client->socket, head->data, head->used);
-				APE_sendfile(client->socket, &client->http.path->data[1]);
-				APE_socket_shutdown(client->socket);
+			/* bufferize */
+		}
+		break;
+	case HTTP_BODY_CHAR:
+		//printf("Body char : %c\n", (unsigned char)value);
+		if (APE_TRANSPORT_QS_ISJSON(client->http.transport) && 
+			client->json.parser != NULL) {
+			if (!JSON_parser_char(client->json.parser, (unsigned char)value)) {
+				printf("Bad JSON\n");
 			}
-			break;
-		default:
-			break;
+		} 
+		break;
+	case HTTP_PATH_END:
+		buffer_append_char(client->http.path, '\0');
+		client->http.transport = ape_get_transport(client->http.path);
+		
+		if (APE_TRANSPORT_QS_ISJSON(client->http.transport)) {
+			JSON_config config;
+			init_JSON_config(&config);
+			config.depth		= 15;
+			config.callback		= NULL;
+			config.callback_ctx	= NULL;
+			config.allow_comments	= 0;
+			config.handle_floats_manually = 0;
+		
+			client->json.parser = new_JSON_parser(&config);				
+		}
+		break;
+	case HTTP_VERSION_MINOR:		
+		
+		/* fall through */
+	case HTTP_VERSION_MAJOR:
+	//	printf("Version detected %i\n", value);
+		break;
+	case HTTP_HEADER_KEY:
+	//	printf("Header key\n");
+		break;
+	case HTTP_HEADER_VAL:
+	//	printf("Header value\n");
+		break;
+	case HTTP_CL_VAL:
+	//	printf("CL value : %i\n", value);
+		break;
+	case HTTP_HEADER_END:
+	//	printf("--------- HEADERS END ---------\n");
+		//ape_socket_write_file(client->socket, client->http.path->data, NULL);
+		break;
+	case HTTP_READY:
+		{
+			APE_socket_shutdown(client->socket);
+		}
+		break;
+	default:
+		break;
 	}
 	return 1;
 }
