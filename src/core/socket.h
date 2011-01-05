@@ -26,7 +26,7 @@
 #include <netdb.h>
 #endif
 
-#define APE_SOCKET_BACKLOG 2048
+#define APE_SOCKET_BACKLOG 511
 
 /* get a ape_socket pointer from event returns */
 #define APE_SOCKET(attach) ((ape_socket *)attach)
