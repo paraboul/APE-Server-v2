@@ -24,30 +24,30 @@
 
 #define HACH_TABLE_MAX 8192
 
-typedef struct HTBL
+typedef struct _ape_htable
 {
-	struct _htbl_item *first;
-	struct _htbl_item **table;
-} HTBL;
+	struct _ape_htable_item *first;
+	struct _ape_htable_item **table;
+} ape_htable_t;
 
 
-typedef struct _htbl_item
+typedef struct _ape_htable_item
 {
 	char *key;
 	void *addrs;
-	struct _htbl_item *next;
+	struct _ape_htable_item *next;
 	
-	struct _htbl_item *lnext;
-	struct _htbl_item *lprev;
+	struct _ape_htable_item *lnext;
+	struct _ape_htable_item *lprev;
 	
-} HTBL_ITEM;
+} ape_htable_item_t;
 
-HTBL *hashtbl_init();
+ape_htable_t *hashtbl_init();
 
-void hashtbl_free(HTBL *htbl);
-void *hashtbl_seek(HTBL *htbl, const char *key, int key_len);
-void hashtbl_erase(HTBL *htbl, const char *key, int key_len);
-void hashtbl_append(HTBL *htbl, const char *key, int key_len, void *structaddr);
+void hashtbl_free(ape_htable_t *htbl);
+void *hashtbl_seek(ape_htable_t *htbl, const char *key, int key_len);
+void hashtbl_erase(ape_htable_t *htbl, const char *key, int key_len);
+void hashtbl_append(ape_htable_t *htbl, const char *key, int key_len, void *structaddr);
 uint32_t ape_hash_str(const void *key, int len);
 unsigned int MurmurHash2 ( const void * key, int len, unsigned int seed );
 
