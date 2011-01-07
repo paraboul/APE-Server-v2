@@ -100,7 +100,9 @@ typedef enum actions {
 	BC = -15, /* body char */
 	PC = -16, /* path char */
 	QS = -17, /* query string */
-	BH = -18  /* Begin unhex */
+	BH = -18,  /* Begin unhex */
+	HK = -19,
+	HV = -20
 } parser_actions;
 
 
@@ -127,8 +129,9 @@ static int state_transition_table[NR_STATES][NR_CLASSES] = {
 /*HTTP/[0-9]/[0-9]H8*/ {__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,HB,__,__,__,__,__,__,__,__,__,__,__,__,__,__},
 /* new line 	  EL*/ {__,__,__,ER,C1,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__},
 /* \r expect \n   ER*/ {__,__,__,__,C1,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__},
-/* header key 	  HK*/ {__,__,__,__,__,KH,__,__,__,__,__,HK,__,__,__,__,HK,__,HK,HK,HK,HK,HK,HK,HK,HK,HK,HK,HK,__},
-/* header value   HV*/ {__,HV,__,VH,VH,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV},
+/* header key 	  HH*/ {__,__,__,__,__,KH,__,__,__,__,__,HK,__,__,__,__,HK,__,HK,HK,HK,HK,HK,HK,HK,HK,HK,HK,HK,__},
+/* header value   HI*/ {__,HV,__,VH,VH,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV},
+#if 0
 /*C               C1*/ {__,__,__,FI,EH,KH,__,__,__,__,__,HK,__,__,__,__,HK,__,HK,HK,HK,HK,HK,HK,HK,HK,C2,HK,HK,__},
 /*Co              C2*/ {__,__,__,__,__,KH,__,__,__,__,__,HK,__,__,__,__,HK,__,HK,HK,HK,HK,HK,HK,C3,HK,HK,HK,HK,__},
 /*Con             C3*/ {__,__,__,__,__,KH,__,__,__,__,__,HK,__,__,__,__,HK,__,HK,HK,HK,HK,HK,HK,HK,HK,HK,C4,HK,__},
@@ -146,6 +149,7 @@ static int state_transition_table[NR_STATES][NR_CLASSES] = {
 /*Content-length: CF*/ {__,__,__,__,__,CG,__,__,__,__,__,HK,__,__,__,__,HK,__,HK,HK,HK,HK,HK,HK,HK,HK,HK,HK,HK,__},
 /*Content-length: CG*/ {__,KC,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__},
 /* CL value       CV*/ {__,__,__,VE,VE,__,__,__,__,__,__,__,__,__,__,VC,__,__,__,__,__,__,__,__,__,__,__,__,__,__},
+#endif
 /* 		  E1*/ {__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,EA,__,__,EA,EA,__,__,__,__,__,__,EA,__,__,__},
 /* 		  E2*/ {__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,EB,__,__,EB,EB,__,__,__,__,__,__,EB,__,__,__},
 /* 		  FI*/ {__,__,__,__,EH,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__},
@@ -219,7 +223,7 @@ inline int parse_http_char(struct _http_parser *parser, const unsigned char c)
 				break;
 			case KH: /* Header key */
 				parser->callback(parser->ctx, HTTP_HEADER_KEY, 0, parser->step);
-				parser->state = HV;
+				parser->state = HI;
 				break;
 			case VH: /* Header value */
 				parser->callback(parser->ctx, HTTP_HEADER_VAL, 0, parser->step);
@@ -299,6 +303,14 @@ inline int parse_http_char(struct _http_parser *parser, const unsigned char c)
 					return 0;				
 				}
 				parser->state = E1;
+				break;
+			case HK:
+				printf("header key %c\n", c);
+				parser->state = HH;
+				break;
+			case HV:
+				printf("header value : %c\n", c);
+				parser->state = HI;
 				break;
 			default:
 				return 0;

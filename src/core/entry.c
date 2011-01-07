@@ -1,6 +1,5 @@
 #include "common.h"
-#include "buffer.h"
-#include "string.h"
+#include "ape_buffer.h"
 #include "events.h"
 
 #include <stdio.h>
@@ -9,7 +8,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "hash.h"
+#include "ape_hash.h"
 #include "socket.h"
 #include "events_loop.h"
 #include "server.h"
@@ -46,7 +45,9 @@ static ape_global *ape_init()
 		return NULL;
 	}
 	
-	ape->seed = time(NULL) ^ (getpid() << 16);
+	ape->seed = _ape_seed = time(NULL) ^ (getpid() << 16);
+	
+	printf("New seed : %d\n", _ape_seed);
 	
 	events_init(ape);
 
@@ -75,7 +76,7 @@ int main(int argc, char **argv)
 	printf("Author  : Anthony Catel (a.catel@weelya.com)\n\n");
 	
 	
-	h = hash("fop", 3, ape->seed);
+	//h = hash("fop", 3, ape->seed);
 	
 	ape_server_init(6969, "0.0.0.0", ape);
 	
@@ -86,7 +87,9 @@ int main(int argc, char **argv)
 			printf("[Module] Failed to load %s\n", ape_modules[z]->name);
 		}
 	}
-
+	
+	printf("Hash : %d\n", ape_hash_str("foo", 3));
+	
 	ape->conf = ape_read_config("../../etc/ape.conf");
 
 	events_loop(ape);

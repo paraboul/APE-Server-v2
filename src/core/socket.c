@@ -115,6 +115,7 @@ int APE_socket_listen(ape_socket *socket, uint16_t port,
 {
 	struct sockaddr_in addr;
 	int reuse_addr = 1;
+	int timeout = 2;
 	
 	if (port == 0 || port > 65535) {
 		return -1;
@@ -135,7 +136,7 @@ int APE_socket_listen(ape_socket *socket, uint16_t port,
 		
 		return -1;
 	}
-	
+	setsockopt(socket->s.fd, IPPROTO_TCP, TCP_DEFER_ACCEPT, &timeout, sizeof(int));	
 	socket->states.type = APE_SOCKET_TP_SERVER;
 	socket->states.state = APE_SOCKET_ST_ONLINE;
 	
@@ -210,9 +211,6 @@ void APE_sendfile(ape_socket *socket, const char *file)
 	int fd, nwrite = 0;
 	off_t offset = 0;
 	ape_socket_jobs_t *job;
-	
-	
-	printf("what\n");
 	
 	if ((fd = open(file, O_RDONLY)) == -1) {
 		printf("Unable to open file %s\n", file);
@@ -451,8 +449,12 @@ inline int ape_socket_accept(ape_socket *socket, ape_global *ape)
 		fd = accept(socket->s.fd, 
 			(struct sockaddr *)&their_addr,
 			(unsigned int *)&sin_size);
-			
-		if (fd == -1) break; /* EAGAIN ? */
+		
+		printf("new connection\n");
+		if (fd == -1) {
+			if (errno == EINTR) continue;
+			break;
+		}
 
 		client			= APE_socket_new(socket->states.proto, fd);
 

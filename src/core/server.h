@@ -5,10 +5,11 @@
 #include "socket.h"
 #include "http_parser.h"
 #include "JSON_parser.h"
-#include "buffer.h"
+#include "ape_buffer.h"
 #include "ape_transports.h"
 
 #define APE_CLIENT(socket) ((ape_client *)socket->ctx)
+
 
 typedef struct {
 	ape_socket *socket;

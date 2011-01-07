@@ -3,7 +3,7 @@
 #include "JSON_parser.h"
 #include "ape_transports.h"
 
-
+static int ape_server_http_ready(ape_client *client);
 
 static struct _ape_transports_s {
 	ape_transport_t type;
@@ -106,10 +106,10 @@ static int ape_http_callback(void *ctx, callback_type type, int value, uint32_t 
 	//	printf("Version detected %i\n", value);
 		break;
 	case HTTP_HEADER_KEY:
-	//	printf("Header key\n");
+		//printf("Header key %i %s\n", step, client->socket->data_in.data);
 		break;
 	case HTTP_HEADER_VAL:
-	//	printf("Header value\n");
+		//printf("Header value\n");
 		break;
 	case HTTP_CL_VAL:
 	//	printf("CL value : %i\n", value);
@@ -119,14 +119,23 @@ static int ape_http_callback(void *ctx, callback_type type, int value, uint32_t 
 		//ape_socket_write_file(client->socket, client->http.path->data, NULL);
 		break;
 	case HTTP_READY:
-		{
-			APE_socket_shutdown(client->socket);
-		}
+		ape_server_http_ready(client);
 		break;
 	default:
 		break;
 	}
 	return 1;
+}
+
+static int ape_server_http_ready(ape_client *client)
+{
+	switch(client->http.transport) {
+	case APE_TRANSPORT_FT:
+		printf("FT detected\n");
+		break;
+	default:
+		break;
+	}
 }
 
 static void ape_server_on_read(ape_socket *socket_client, ape_global *ape)

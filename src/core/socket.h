@@ -2,7 +2,7 @@
 #define __APE_SOCKET_H
 
 #include "common.h"
-#include "buffer.h"
+#include "ape_buffer.h"
 #include "ape_pool.h"
 
 #ifdef __WIN32

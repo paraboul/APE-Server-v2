@@ -40,8 +40,8 @@ typedef enum states {
 	H8, /* HTTP/[0-9].[0-9] */
 	EL, /* expect new line */
 	ER, /* expect \n */
-	HK, /* header key */
-	HV, /* header value */
+	HH, /* header key */
+	HI, /* header value */
 	C1, /* C */
 	C2, /* O */
 	C3, /* N */
