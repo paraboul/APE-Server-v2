@@ -19,10 +19,11 @@ buffer *buffer_new(size_t size)
 	
 	b = malloc(sizeof(*b));
 	buffer_init(b);
-	
-	b->size = size;
-	if (size) {
+
+	if ((b->size = size) > 0) {
 		b->data = malloc(sizeof(char) * size);
+	} else {
+		b->size = 0;
 	}
 	
 	return b;
@@ -71,11 +72,7 @@ void buffer_append_char(buffer *b, const char data)
 
 void buffer_append_string(buffer *b, const char *string)
 {
-	size_t length;
-	
-	length = strlen(string);
-	
-	buffer_append_string_n(b, string, length);
+	buffer_append_string_n(b, string, strlen(string));
 }
 
 void buffer_append_string_n(buffer *b, const char *string, size_t length)
