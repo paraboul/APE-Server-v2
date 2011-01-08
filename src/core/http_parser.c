@@ -131,7 +131,7 @@ static int state_transition_table[NR_STATES][NR_CLASSES] = {
 /* \r expect \n   ER*/ {__,__,__,__,C1,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__,__},
 /* header key 	  HH*/ {__,__,__,__,__,KH,__,__,__,__,__,HK,__,__,__,__,HK,__,HK,HK,HK,HK,HK,HK,HK,HK,HK,HK,HK,__},
 /* header value   HI*/ {__,HV,__,VH,VH,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV,HV},
-#if 0
+#if 1
 /*C               C1*/ {__,__,__,FI,EH,KH,__,__,__,__,__,HK,__,__,__,__,HK,__,HK,HK,HK,HK,HK,HK,HK,HK,C2,HK,HK,__},
 /*Co              C2*/ {__,__,__,__,__,KH,__,__,__,__,__,HK,__,__,__,__,HK,__,HK,HK,HK,HK,HK,HK,C3,HK,HK,HK,HK,__},
 /*Con             C3*/ {__,__,__,__,__,KH,__,__,__,__,__,HK,__,__,__,__,HK,__,HK,HK,HK,HK,HK,HK,HK,HK,HK,C4,HK,__},
@@ -305,11 +305,11 @@ inline int parse_http_char(struct _http_parser *parser, const unsigned char c)
 				parser->state = E1;
 				break;
 			case HK:
-				printf("header key %c\n", c);
+				parser->callback(parser->ctx, HTTP_HEADER_KEYC, c, parser->step);
 				parser->state = HH;
 				break;
 			case HV:
-				printf("header value : %c\n", c);
+				parser->callback(parser->ctx, HTTP_HEADER_VALC, c, parser->step);
 				parser->state = HI;
 				break;
 			default:

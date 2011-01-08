@@ -26,7 +26,7 @@ buffer *ape_array_lookup(ape_array_t *array, const char *key, int klen)
 {
 	buffer *k, *v;
 	APE_A_FOREACH(array, k, v) {
-		if (k->used == klen && memcmp(key, k->data, klen) == 0) {
+		if (k->used == klen && strncasecmp(key, k->data, klen) == 0) {
 			return v;
 		}
 	}
@@ -79,7 +79,7 @@ void ape_array_add_n(ape_array_t *array, const char *key, int klen, const char *
 	buffer *k, *v;
 	
 	k = buffer_new(klen+1);
-	v = buffer_new(klen+1);
+	v = buffer_new(vlen+1);
 	
 	buffer_append_string_n(k, key, klen);
 	buffer_append_string_n(v, value, vlen);

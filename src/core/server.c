@@ -55,13 +55,15 @@ static int ape_http_callback(void *ctx, callback_type type, int value, uint32_t 
 				client->http.method = HTTP_POST;
 				break;
 		}
-		client->http.path = buffer_new(32);
+		client->http.path 		= buffer_new(32);
+		client->http.headers.list 	= ape_array_new(12);
+		client->http.headers.tkey	= buffer_new(16);
+		client->http.headers.tval	= buffer_new(64);
 		break;
 	case HTTP_PATH_CHAR:
 		buffer_append_char(client->http.path, (unsigned char)value);
 		break;
 	case HTTP_QS_CHAR:
-		//printf("QS %c\n", (unsigned char)value);
 		if (client->http.method == HTTP_GET && 
 			APE_TRANSPORT_QS_ISJSON(client->http.transport) && 
 			client->json.parser != NULL) {
@@ -74,8 +76,13 @@ static int ape_http_callback(void *ctx, callback_type type, int value, uint32_t 
 			/* bufferize */
 		}
 		break;
+	case HTTP_HEADER_KEYC:
+		buffer_append_char(client->http.headers.tkey, (unsigned char)value);
+		break;
+	case HTTP_HEADER_VALC:
+		buffer_append_char(client->http.headers.tval, (unsigned char)value);
+		break;
 	case HTTP_BODY_CHAR:
-		//printf("Body char : %c\n", (unsigned char)value);
 		if (APE_TRANSPORT_QS_ISJSON(client->http.transport) && 
 			client->json.parser != NULL) {
 			if (!JSON_parser_char(client->json.parser, (unsigned char)value)) {
@@ -99,24 +106,21 @@ static int ape_http_callback(void *ctx, callback_type type, int value, uint32_t 
 			client->json.parser = new_JSON_parser(&config);				
 		}
 		break;
-	case HTTP_VERSION_MINOR:		
-		
+	case HTTP_VERSION_MINOR:	
 		/* fall through */
 	case HTTP_VERSION_MAJOR:
-	//	printf("Version detected %i\n", value);
 		break;
 	case HTTP_HEADER_KEY:
-		//printf("Header key %i %s\n", step, client->socket->data_in.data);
 		break;
 	case HTTP_HEADER_VAL:
-		//printf("Header value\n");
+		ape_array_add_b(client->http.headers.list, 
+				client->http.headers.tkey, client->http.headers.tval);
+		client->http.headers.tkey	= buffer_new(16);
+		client->http.headers.tval	= buffer_new(64);
 		break;
 	case HTTP_CL_VAL:
-	//	printf("CL value : %i\n", value);
 		break;
 	case HTTP_HEADER_END:
-	//	printf("--------- HEADERS END ---------\n");
-		//ape_socket_write_file(client->socket, client->http.path->data, NULL);
 		break;
 	case HTTP_READY:
 		ape_server_http_ready(client);
@@ -129,6 +133,14 @@ static int ape_http_callback(void *ctx, callback_type type, int value, uint32_t 
 
 static int ape_server_http_ready(ape_client *client)
 {
+	const buffer *host = ape_array_lookup(client->http.headers.list, 
+			CONST_STR_LEN("host"));
+	
+	if (host != NULL) {
+		/* /!\ the buffer is non null terminated */
+		
+	}
+	
 	switch(client->http.transport) {
 	case APE_TRANSPORT_FT:
 		printf("FT detected\n");
@@ -136,6 +148,8 @@ static int ape_server_http_ready(ape_client *client)
 	default:
 		break;
 	}
+	
+	return 0;
 }
 
 static void ape_server_on_read(ape_socket *socket_client, ape_global *ape)
@@ -144,7 +158,8 @@ static void ape_server_on_read(ape_socket *socket_client, ape_global *ape)
 	
 	/* TODO : implement duff device here (speedup !)*/
 	for (i = 0; i < socket_client->data_in.used; i++) {
-		if (!parse_http_char(&APE_CLIENT(socket_client)->http.parser, socket_client->data_in.data[i])) {
+		if (!parse_http_char(&APE_CLIENT(socket_client)->http.parser, 
+				socket_client->data_in.data[i])) {
 			shutdown(socket_client->s.fd, 2);
 			break;
 		}
@@ -168,6 +183,7 @@ static void ape_server_on_connect(ape_socket *socket_client, ape_global *ape)
 	client->http.method		= HTTP_GET;
 	client->http.transport		= APE_TRANSPORT_NU;
 	client->http.path		= NULL;
+	client->http.headers.list	= NULL;
 	
 	client->json.parser = NULL;
 
@@ -178,6 +194,8 @@ static void ape_server_on_disconnect(ape_socket *socket_client, ape_global *ape)
 	if (APE_CLIENT(socket_client)->http.path != NULL) {
 		buffer_destroy(APE_CLIENT(socket_client)->http.path);
 	}
+	/* TODO clean headers */
+	
 	free(socket_client->ctx); /* release the ape_client object */
 	
 	//printf("Client has disconnected\n");

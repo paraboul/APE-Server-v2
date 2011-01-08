@@ -209,7 +209,6 @@ void APE_socket_shutdown(ape_socket *socket)
 void APE_sendfile(ape_socket *socket, const char *file)
 {
 	int fd, nwrite = 0;
-	off_t offset = 0;
 	ape_socket_jobs_t *job;
 	
 	if ((fd = open(file, O_RDONLY)) == -1) {

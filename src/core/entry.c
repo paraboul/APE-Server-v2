@@ -42,27 +42,45 @@ static ape_global *ape_init()
 	ape->is_running = 1;
 
 	if (ape_dns_init(ape) != 0) {
-		free(ape);
-		return NULL;
+		goto error;
 	}
 	
 	ape->seed = _ape_seed = time(NULL) ^ (getpid() << 16);
 	
+	if ((ape->conf = ape_read_config("../../etc/ape.conf", ape)) == NULL) {
+		goto error;
+	}
+	
 	events_init(ape);
 
 	return ape;
+	
+error:
+	
+	free(ape);
+	
+	return NULL;
+}
+
+static void ape_load_modules(ape_global *ape)
+{
+	int z;
+	
+	for (z = 0; ape_modules[z]; z++) {
+		if (ape_modules[z]->ape_module_init(ape) == 0) {
+			printf("[Module] %s loaded\n", ape_modules[z]->name);
+		} else {
+			printf("[Module] Failed to load %s\n", ape_modules[z]->name);
+		}
+	}
 }
 
 int main(int argc, char **argv)
 {
 	ape_global *ape;
-	uint64_t h;
-	int z;
-	
-	ape_pool_t p[2];
 
 	if ((ape = ape_init()) == NULL) {
-		printf("Failed to init APE\n");
+		printf("Failed to initialize APE\n");
 		exit(1);
 	}
 	
@@ -73,21 +91,9 @@ int main(int argc, char **argv)
 	printf("/_/   \\_\\_|   |_____| |_____(_)___/ \n\t   Async Push Engine (%s)\n\n", __REV);
 	printf("Build   : %s %s\n", __DATE__, __TIME__);
 	printf("Author  : Anthony Catel (a.catel@weelya.com)\n\n");
-	
-	
-	//h = hash("fop", 3, ape->seed);
-	
-	ape_server_init(6969, "0.0.0.0", ape);
-	
-	for(z = 0; ape_modules[z]; z++) {
-		if (ape_modules[z]->ape_module_init(ape) == 0) {
-			printf("[Module] %s loaded\n", ape_modules[z]->name);
-		} else {
-			printf("[Module] Failed to load %s\n", ape_modules[z]->name);
-		}
-	}
 
-	ape->conf = ape_read_config("../../etc/ape.conf");
+	ape_server_init(6969, "0.0.0.0", ape);
+	ape_load_modules(ape);
 
 	events_loop(ape);
 

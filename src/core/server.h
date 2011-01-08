@@ -6,7 +6,9 @@
 #include "http_parser.h"
 #include "JSON_parser.h"
 #include "ape_buffer.h"
+#include "ape_array.h"
 #include "ape_transports.h"
+
 
 #define APE_CLIENT(socket) ((ape_client *)socket->ctx)
 
@@ -20,6 +22,11 @@ typedef struct {
 		ape_transport_t transport;
 		buffer *path;
 		buffer *qs;
+		struct {
+			ape_array_t *list;
+			buffer *tkey;
+			buffer *tval;
+		} headers;
 	} http;
 	
 	struct {

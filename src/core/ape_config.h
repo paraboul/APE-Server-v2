@@ -4,6 +4,6 @@
 #include <confuse-2.7/src/confuse.h>
 #include "common.h"
 
-cfg_t *ape_read_config(const char *file);
+cfg_t *ape_read_config(const char *file, ape_global *ape);
 
 #endif
