@@ -10,6 +10,17 @@ ape_array_t *ape_array_new(size_t n)
 	return array;
 }
 
+static ape_array_item_t *ape_array_lookup_item(ape_array_t *array, const char *key, int klen)
+{
+	buffer *k, *v;
+	APE_A_FOREACH(array, k, v) {
+		if (k->used == klen && memcmp(key, k->data, klen) == 0) {
+			return __array_item;
+		}
+	}
+	
+	return NULL;	
+}
 
 buffer *ape_array_lookup(ape_array_t *array, const char *key, int klen)
 {
@@ -23,10 +34,26 @@ buffer *ape_array_lookup(ape_array_t *array, const char *key, int klen)
 	return NULL;
 }
 
+void ape_array_delete(ape_array_t *array, const char *key, int klen)
+{
+	ape_array_item_t *item = ape_array_lookup_item(array, key, klen);
+	
+	if (item != NULL) {
+		item->pool.flags &= ~APE_ARRAY_USED_SLOT;
+		buffer_destroy(item->key);
+		buffer_destroy(item->val);
+		
+		array->current = (ape_pool_t *)item;
+	}
+}
 
 void ape_array_add_b(ape_array_t *array, buffer *key, buffer *value)
 {
-	ape_array_item_t *slot = (ape_array_item_t *)array->current;
+	ape_array_item_t *slot;
+	
+	ape_array_delete(array, key->data, key->used);
+	
+	slot = (ape_array_item_t *)array->current;
 	
 	if (slot == NULL || slot->pool.flags & APE_ARRAY_USED_SLOT) {
 		slot = (ape_array_item_t *)ape_grow_pool(array, sizeof(ape_array_item_t), 4);
