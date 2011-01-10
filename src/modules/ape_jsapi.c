@@ -139,7 +139,7 @@ static int ape_module_jsapi_init(ape_global *ape)
 		return -1;
 	}
 	
-	printf("JSAPI initialized\n");
+	printf("[SSJS] JSAPI runtime initialized\n");
 	
 	glob("../../scripts/main.js", 0, NULL, &globbuf);
 	

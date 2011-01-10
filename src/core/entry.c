@@ -44,14 +44,13 @@ static ape_global *ape_init()
 	if (ape_dns_init(ape) != 0) {
 		goto error;
 	}
+	events_init(ape);
 	
 	ape->seed = _ape_seed = time(NULL) ^ (getpid() << 16);
 	
 	if ((ape->conf = ape_read_config("../../etc/ape.conf", ape)) == NULL) {
 		goto error;
 	}
-	
-	events_init(ape);
 
 	return ape;
 	
@@ -79,11 +78,6 @@ int main(int argc, char **argv)
 {
 	ape_global *ape;
 
-	if ((ape = ape_init()) == NULL) {
-		printf("Failed to initialize APE\n");
-		exit(1);
-	}
-	
 	printf("    _    ____  _____   ____    ___  \n");
 	printf("   / \\  |  _ \\| ____| |___ \\  / _ \\ \n");
 	printf("  / _ \\ | |_) |  _|     __) || | | |\n");
@@ -92,7 +86,12 @@ int main(int argc, char **argv)
 	printf("Build   : %s %s\n", __DATE__, __TIME__);
 	printf("Author  : Anthony Catel (a.catel@weelya.com)\n\n");
 
-	ape_server_init(6969, "0.0.0.0", ape);
+	if ((ape = ape_init()) == NULL) {
+		printf("Failed to initialize APE\n");
+		exit(1);
+	}
+
+	
 	ape_load_modules(ape);
 
 	events_loop(ape);

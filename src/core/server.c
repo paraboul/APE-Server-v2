@@ -209,17 +209,29 @@ ape_server *ape_server_init(uint16_t port, const char *local_ip, ape_global *ape
 	
 	if ((socket = APE_socket_new(APE_SOCKET_PT_TCP, 0)) == NULL ||
 		APE_socket_listen(socket, port, local_ip, ape) != 0) {
+		
+		printf("[Server] Failed to initialize %s:%d\n", local_ip, port);
 		APE_socket_destroy(socket, ape);
 		return NULL;
 	}
 
 	server 		= malloc(sizeof(*server));
 	server->socket 	= socket;
+	
+	if (*local_ip == '*' || *local_ip == '\0') {
+		strcpy(server->ip, "0.0.0.0");
+	} else {
+		strncpy(server->ip, local_ip, 15);
+	}
+	server->ip[15]	= '\0';
+	server->port	= port;
 		
 	socket->callbacks.on_read 	= ape_server_on_read;
 	socket->callbacks.on_connect 	= ape_server_on_connect;
 	socket->callbacks.on_disconnect = ape_server_on_disconnect;	
 	socket->ctx 			= server; /* link the socket to the server struct */
+	
+	printf("[Server] Starting %s:%d\n", server->ip, server->port);
 	
 	return server;
 }

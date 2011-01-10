@@ -36,7 +36,10 @@ typedef struct {
 } ape_client;
 
 typedef struct {
+	char ip[16];
+	ape_array_t *hosts;
 	ape_socket *socket;  /* socket of the server   */
+	uint16_t port;
 	uint32_t nconnected; /* number of fd connected */
 } ape_server;
 
