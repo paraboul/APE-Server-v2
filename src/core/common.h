@@ -21,7 +21,7 @@
 typedef struct _ape_global ape_global;
 
 #include "ape_config.h"
-#include "events.h"
+#include "ape_events.h"
 
 unsigned int _ape_seed;
 

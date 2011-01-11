@@ -19,8 +19,8 @@
 
 /* sock.c */
 
-#include "socket.h"
-#include "dns.h"
+#include "ape_socket.h"
+#include "ape_dns.h"
 
 #include <stdio.h>
 #include <sys/time.h>

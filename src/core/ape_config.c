@@ -1,5 +1,6 @@
 #include "ape_config.h"
-#include "server.h"
+#include "ape_server.h"
+#include "ape_array.h"
 #include <stdlib.h>
 #define _GNU_SOURCE
 #include <string.h>
@@ -8,7 +9,12 @@ static void ape_config_error(cfg_t *cfg, const char *fmt, va_list ap);
 
 int ape_config_server_setup(cfg_t *conf, ape_server *server)
 {
+	int i = 0;
 	
+	
+	for (i = 0; i < cfg_size(conf, "servername"); i++) {
+		printf("Host : %s\n", cfg_getnstr(conf, "servername", i));
+	}
 }
 
 cfg_t *ape_read_config(const char *file, ape_global *ape)
@@ -20,7 +26,7 @@ cfg_t *ape_read_config(const char *file, ape_global *ape)
 	
 	cfg_opt_t server_opts[] =
 	{
-		CFG_INT("port", 6969, CFGF_NONE),
+		CFG_STR_LIST("servername", "{127.0.0.1}", CFGF_NONE),
 		CFG_END()
 	};
 	
@@ -38,7 +44,7 @@ cfg_t *ape_read_config(const char *file, ape_global *ape)
 		cfg_free(cfg);
 		return NULL;
 	}
-	
+
 	for (i = 0; i < cfg_size(cfg, "server"); i++) {
 		ape_server *aserver;
 		char *sep, ip[16];

@@ -1,7 +1,7 @@
 #include "../deps/jsapi/src/jsapi.h"
 
 #include <APEapi.h>
-#include <events.h>
+#include <ape_events.h>
 #include <glob.h>
 
 #define D_APE_JS_NATIVE(func_name) static JSBool func_name(JSContext *cx, uintN argc, jsval *vpn)

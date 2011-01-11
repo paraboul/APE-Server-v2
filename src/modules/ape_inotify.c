@@ -1,5 +1,5 @@
 #include <APEapi.h>
-#include <events.h>
+#include <ape_events.h>
 
 #include <stdlib.h>
 #include <sys/inotify.h>

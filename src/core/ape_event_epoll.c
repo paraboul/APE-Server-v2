@@ -1,7 +1,7 @@
 /* event_kqueue.c */
 
 #include "common.h"
-#include "events.h"
+#include "ape_events.h"
 #include <sys/time.h>
 #include <time.h>
 #include <string.h>
@@ -9,7 +9,7 @@
 #include <stdio.h>
 #include <unistd.h>
 
-#include "socket.h"
+#include "ape_socket.h"
 
 #ifdef USE_EPOLL_HANDLER
 static int event_epoll_add(struct _fdevent *ev, int fd, int bitadd, void *attach)

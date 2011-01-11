@@ -557,7 +557,7 @@ cfg_setopt(cfg_t *cfg, cfg_opt_t *opt, char *value)
            is_set(CFGF_LIST, opt->flags))
         {
             val = 0;
-            if(opt->type == CFGT_SEC && is_set(CFGF_TITLE, opt->flags))
+            if(opt->type == CFGT_SEC && is_set(CFGF_TITLE, opt->flags) && 0)
             {
                 unsigned int i;
 

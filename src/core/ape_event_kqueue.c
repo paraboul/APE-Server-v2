@@ -1,7 +1,7 @@
 /* event_kqueue.c */
 
 #include "common.h"
-#include "events.h"
+#include "ape_events.h"
 #include <sys/time.h>
 #include <time.h>
 

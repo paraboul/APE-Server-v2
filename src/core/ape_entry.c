@@ -1,6 +1,6 @@
 #include "common.h"
 #include "ape_buffer.h"
-#include "events.h"
+#include "ape_events.h"
 
 #include <stdio.h>
 #include <signal.h>
@@ -9,11 +9,11 @@
 #include <unistd.h>
 
 #include "ape_hash.h"
-#include "socket.h"
-#include "events_loop.h"
-#include "server.h"
-#include "dns.h"
-#include "modules.h"
+#include "ape_socket.h"
+#include "ape_events_loop.h"
+#include "ape_server.h"
+#include "ape_dns.h"
+#include "ape_modules.h"
 #include "ape_config.h"
 #include "ape_pool.h"
 #include "ape_array.h"

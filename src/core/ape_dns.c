@@ -4,8 +4,8 @@
 #include <arpa/inet.h>
 
 #include "common.h"
-#include "dns.h"
-#include "events.h"
+#include "ape_dns.h"
+#include "ape_events.h"
 
 /* gcc *.c -I../deps/ ../deps/c-ares/.libs/libcares.a -lrt */
 

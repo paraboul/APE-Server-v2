@@ -1,6 +1,6 @@
 #include "common.h"
-#include "events.h"
-#include "socket.h"
+#include "ape_events.h"
+#include "ape_socket.h"
 
 void events_loop(ape_global *ape)
 {

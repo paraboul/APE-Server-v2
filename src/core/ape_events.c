@@ -1,6 +1,6 @@
 #include "common.h"
-#include "events.h"
-#include "socket.h"
+#include "ape_events.h"
+#include "ape_socket.h"
 
 #include <stdlib.h>
 

@@ -2,8 +2,8 @@
 #define __APE_SERVER_H
 
 #include "common.h"
-#include "socket.h"
-#include "http_parser.h"
+#include "ape_socket.h"
+#include "ape_http_parser.h"
 #include "JSON_parser.h"
 #include "ape_buffer.h"
 #include "ape_array.h"
@@ -42,6 +42,10 @@ typedef struct {
 	uint16_t port;
 	uint32_t nconnected; /* number of fd connected */
 } ape_server;
+
+typedef struct _ape_server_conf {
+	
+} ape_server_conf_t;
 
 ape_server *ape_server_init(uint16_t port, const char *local_ip, ape_global *ape);
 
