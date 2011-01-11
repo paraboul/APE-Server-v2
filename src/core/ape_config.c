@@ -19,6 +19,7 @@ int ape_config_server_setup(cfg_t *conf, ape_server *server)
 
 cfg_t *ape_read_config(const char *file, ape_global *ape)
 {
+	ape_array_t *srvlst;
 	cfg_t *cfg;
 	cfg_t *server;
 	int i;
@@ -44,7 +45,9 @@ cfg_t *ape_read_config(const char *file, ape_global *ape)
 		cfg_free(cfg);
 		return NULL;
 	}
-
+	
+	srvlst = ape_array_new(8);
+	
 	for (i = 0; i < cfg_size(cfg, "server"); i++) {
 		ape_server *aserver;
 		char *sep, ip[16];
@@ -71,13 +74,18 @@ cfg_t *ape_read_config(const char *file, ape_global *ape)
 			goto error;
 		}
 		
-		free(ipport);
+		*sep = ':';
 		
-		if ((aserver = ape_server_init(port, ip, ape)) != NULL) {
-			ape_config_server_setup(server, aserver);
+		if ((aserver = (ape_server *)ape_array_lookup(srvlst, ipport, strlen(ipport))) != NULL || 
+				(aserver = ape_server_init(port, ip, ape)) != NULL) {
+			
+			ape_array_add_ptrn(srvlst, ipport, strlen(ipport), aserver);
+			
 		}
-		
+		free(ipport);
 	}
+	
+	ape_array_destroy(srvlst);
 	
 	return cfg;
 

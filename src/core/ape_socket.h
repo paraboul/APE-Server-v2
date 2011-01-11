@@ -96,14 +96,8 @@ struct _ape_socket {
 	ape_fds s;
 	
 	buffer data_in;
-	buffer data_out;
 
 	ape_pool_list_t jobs;
-	
-	struct {
-		int fd;
-		int offset;
-	} file_out;
 	
 	void *ctx; 	/* public pointer */
 	

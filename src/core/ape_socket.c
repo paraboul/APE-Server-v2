@@ -100,13 +100,9 @@ ape_socket *APE_socket_new(uint8_t pt, int from)
 	ret->remote_port = 0;
 
 	buffer_init(&ret->data_in);
-	buffer_init(&ret->data_out);
 
 	ape_init_job_list(&ret->jobs, 2);
-	
-	ret->file_out.fd 	= 0;
-	ret->file_out.offset 	= 0;
-	
+
 	return ret;
 }
 
@@ -280,7 +276,6 @@ int APE_socket_destroy(ape_socket *socket, ape_global *ape)
 	close(socket->s.fd);
 	
 	buffer_delete(&socket->data_in);
-	buffer_delete(&socket->data_out);
 	
 	socket->states.state = APE_SOCKET_ST_OFFLINE;
 	

@@ -41,13 +41,23 @@ void ape_array_delete(ape_array_t *array, const char *key, int klen)
 	if (item != NULL) {
 		item->pool.flags &= ~APE_ARRAY_USED_SLOT;
 		buffer_destroy(item->key);
-		buffer_destroy(item->val);
 		
+		switch(item->pool.flags & ~APE_POOL_ALL_FLAGS) {
+			case APE_ARRAY_VAL_BUF:
+				buffer_destroy(item->pool.ptr.buf);
+				item->pool.flags &= ~APE_ARRAY_VAL_BUF;
+				break;
+			case APE_ARRAY_VAL_INT:
+				break;
+			default:
+				break;
+		}
+
 		array->current = (ape_pool_t *)item;
 	}
 }
 
-void ape_array_add_b(ape_array_t *array, buffer *key, buffer *value)
+static ape_array_item_t *ape_array_add_s(ape_array_t *array, buffer *key)
 {
 	ape_array_item_t *slot;
 	
@@ -62,7 +72,6 @@ void ape_array_add_b(ape_array_t *array, buffer *key, buffer *value)
 	slot->pool.flags |= APE_ARRAY_USED_SLOT;
 	
 	slot->key = key;
-	slot->val = value;
 	
 	array->current = slot->pool.next;
 
@@ -72,6 +81,33 @@ void ape_array_add_b(ape_array_t *array, buffer *key, buffer *value)
 			array->current = ((ape_array_item_t *)array->current)->pool.next;
 		}
 	}
+	
+	return slot;
+}
+
+void ape_array_add_b(ape_array_t *array, buffer *key, buffer *value)
+{
+	ape_array_item_t *slot = ape_array_add_s(array, key);
+	
+	slot->pool.flags |= APE_ARRAY_VAL_BUF;
+	slot->pool.ptr.buf = value;
+}
+
+void ape_array_add_ptr(ape_array_t *array, buffer *key, void *ptr)
+{
+	ape_array_item_t *slot = ape_array_add_s(array, key);
+
+	slot->pool.ptr.data = ptr;	
+}
+
+void ape_array_add_ptrn(ape_array_t *array, const char *key, int klen, void *ptr)
+{
+	buffer *k;
+	k = buffer_new(klen+1);
+	
+	buffer_append_string_n(k, key, klen);
+	
+	ape_array_add_ptr(array, k, ptr);
 }
 
 void ape_array_add_n(ape_array_t *array, const char *key, int klen, const char *value, int vlen)

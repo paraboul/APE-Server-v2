@@ -48,6 +48,8 @@ static ape_global *ape_init()
 	
 	ape->seed = _ape_seed = time(NULL) ^ (getpid() << 16);
 	
+	ape->hashs.servers = hashtbl_init();
+	
 	if ((ape->conf = ape_read_config("../../etc/ape.conf", ape)) == NULL) {
 		goto error;
 	}

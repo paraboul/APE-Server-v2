@@ -22,6 +22,7 @@ typedef struct _ape_global ape_global;
 
 #include "ape_config.h"
 #include "ape_events.h"
+#include "ape_hash.h"
 
 unsigned int _ape_seed;
 
@@ -49,6 +50,10 @@ struct _ape_global {
 		} sockets;
 
 	} dns;
+	
+	struct {
+		ape_htable_t *servers;
+	} hashs;
 
 	int is_running;
 };

@@ -137,7 +137,6 @@ static int ape_server_http_ready(ape_client *client)
 	
 	if (host != NULL) {
 		/* /!\ the buffer is non null terminated */
-		
 	}
 	
 	switch(client->http.transport) {
@@ -233,5 +232,12 @@ ape_server *ape_server_init(uint16_t port, const char *local_ip, ape_global *ape
 	printf("[Server] Starting %s:%d\n", server->ip, server->port);
 	
 	return server;
+}
+
+ape_server *ape_server_get_by_ip_port(const char *ip, const char *port, ape_global *ape)
+{
+	char payload[24];
+	
+	
 }
 
