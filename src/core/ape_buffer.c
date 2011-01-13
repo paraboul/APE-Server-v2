@@ -19,7 +19,9 @@ buffer *buffer_new(size_t size)
 	
 	b = malloc(sizeof(*b));
 	buffer_init(b);
-
+	
+	/* TODO: removing a malloc by making b->data[] the last struct elem */
+	
 	if ((b->size = size) > 0) {
 		b->data = malloc(sizeof(char) * size);
 	} else {

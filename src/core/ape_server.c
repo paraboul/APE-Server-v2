@@ -189,6 +189,7 @@ static void ape_server_on_connect(ape_socket *socket_client, ape_global *ape)
 
 static void ape_server_on_disconnect(ape_socket *socket_client, ape_global *ape)
 {
+	
 	if (APE_CLIENT(socket_client)->http.path != NULL) {
 		buffer_destroy(APE_CLIENT(socket_client)->http.path);
 	}
@@ -232,12 +233,5 @@ ape_server *ape_server_init(uint16_t port, const char *local_ip, ape_global *ape
 	printf("[Server] Starting %s:%d\n", server->ip, server->port);
 	
 	return server;
-}
-
-ape_server *ape_server_get_by_ip_port(const char *ip, const char *port, ape_global *ape)
-{
-	char payload[24];
-	
-	
 }
 

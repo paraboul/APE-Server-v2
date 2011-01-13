@@ -18,6 +18,7 @@
 #include "ape_pool.h"
 #include "ape_array.h"
 
+
 //gcc -g *.c ../modules/*.c -I../core/ -I../../deps/ -I/usr/include/ ../../deps/c-ares/.libs/libcares.a ../../deps/confuse-2.7/src/.libs/libconfuse.a ../../deps/jsapi/src/libjs_static.a -lrt -lstdc++
 
 static ape_global *ape_init()
@@ -93,7 +94,6 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
-	
 	ape_load_modules(ape);
 
 	events_loop(ape);

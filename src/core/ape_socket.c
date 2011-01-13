@@ -309,8 +309,8 @@ int ape_socket_do_jobs(ape_socket *socket)
 		switch(job->flags & ~(APE_POOL_ALL_FLAGS | APE_SOCKET_JOB_ACTIVE)) {
 		case APE_SOCKET_JOB_WRITEV:
 		{
-			int i, y;
-			ssize_t n, total_len = 0;
+			int i;
+			ssize_t n;
 			ape_pool_list_t *plist = (ape_pool_list_t *)job->ptr.data;
 			ape_socket_packet_t *packet = (ape_socket_packet_t *)plist->head;
 
