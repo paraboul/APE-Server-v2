@@ -17,58 +17,57 @@
 #define EVENT_WRITE 0x02
 
 #define _APE_FD_DELEGATE_TPL  \
-	ape_fds s; \
-	void (*on_io)(int fd, int ev, ape_global *ape);
+    ape_fds s; \
+    void (*on_io)(int fd, int ev, ape_global *ape);
 
 typedef enum {
-	EVENT_UNKNOWN,
-	EVENT_EPOLL, 	/* Linux */
-	EVENT_KQUEUE, 	/* BSD */
-	EVENT_DEVPOLL,	/* Solaris */
-	EVENT_POLL,	/* POSIX */
-	EVENT_SELECT	/* Generic (Windows) */
+    EVENT_UNKNOWN,
+    EVENT_EPOLL,    /* Linux */
+    EVENT_KQUEUE,   /* BSD */
+    EVENT_DEVPOLL,  /* Solaris */
+    EVENT_POLL,     /* POSIX */
+    EVENT_SELECT    /* Generic (Windows) */
 } fdevent_handler_t;
 
 typedef enum {
-	APE_SOCKET,
-	APE_FILE,
-	APE_DELEGATE
+    APE_SOCKET,
+    APE_FILE,
+    APE_DELEGATE
 } ape_fds_t;
 
 typedef struct { /* Do not store this. Address may changes */
-	int fd;
-	ape_fds_t type;
+    int fd;
+    ape_fds_t type;
 } ape_fds;
 
 struct _ape_fd_delegate {
-	_APE_FD_DELEGATE_TPL
+    _APE_FD_DELEGATE_TPL
 };
 
 struct _fdevent {
-	/* Common values */
-	int *basemem;
-	//ape_fds *fds;
-	
-	/* Interface */
-	int (*add)		(struct _fdevent *, int, int, void *);
-	int (*del)		(struct _fdevent *, int);
-	int (*poll)		(struct _fdevent *, int);
-	void *(*get_current_fd)	(struct _fdevent *, int);
-	void (*growup)		(struct _fdevent *);
-	int (*revent)		(struct _fdevent *, int);
-	int (*reload)		(struct _fdevent *);
-	
-	/* Specifics values */
+    /* Common values */
+    int *basemem;
+
+    /* Interface */
+    int (*add)      (struct _fdevent *, int, int, void *);
+    int (*del)      (struct _fdevent *, int);
+    int (*poll)     (struct _fdevent *, int);
+    int (*revent)   (struct _fdevent *, int);
+    int (*reload)   (struct _fdevent *);
+    void (*growup)  (struct _fdevent *);
+    void *(*get_current_fd) (struct _fdevent *, int);
+
+    /* Specifics values */
 #ifdef USE_KQUEUE_HANDLER
-	struct kevent *events;
-	int kq_fd;
+    struct kevent *events;
+    int kq_fd;
 #endif
 #ifdef USE_EPOLL_HANDLER
-	struct epoll_event *events;
-	int epoll_fd;
+    struct epoll_event *events;
+    int epoll_fd;
 #endif
-	
-	fdevent_handler_t handler;
+
+    fdevent_handler_t handler;
 };
 
 int events_init(ape_global *ape);
@@ -82,4 +81,5 @@ int event_epoll_init(struct _fdevent *ev);
 
 #endif
 
+// vim: ts=4 sts=4 sw=4 et
 

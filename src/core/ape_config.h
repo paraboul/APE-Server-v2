@@ -7,3 +7,6 @@
 cfg_t *ape_read_config(const char *file, ape_global *ape);
 
 #endif
+
+// vim: ts=4 sts=4 sw=4 et
+

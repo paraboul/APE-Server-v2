@@ -47,8 +47,12 @@ ape_htable_t *hashtbl_init();
 void hashtbl_free(ape_htable_t *htbl);
 void *hashtbl_seek(ape_htable_t *htbl, const char *key, int key_len);
 void hashtbl_erase(ape_htable_t *htbl, const char *key, int key_len);
-void hashtbl_append(ape_htable_t *htbl, const char *key, int key_len, void *structaddr);
+void hashtbl_append(ape_htable_t *htbl, const char *key, int key_len,
+        void *structaddr);
 uint32_t ape_hash_str(const void *key, int len);
 unsigned int MurmurHash2 ( const void * key, int len, unsigned int seed );
 
 #endif
+
+// vim: ts=4 sts=4 sw=4 et
+

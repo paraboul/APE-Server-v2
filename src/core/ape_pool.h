@@ -9,19 +9,19 @@
 
 
 typedef struct _ape_pool {
-	union {
-		void *data;
-		int fd;
-		buffer *buf;
-	} ptr; /* public */
-	struct _ape_pool *next;
-	uint32_t flags;
+    union {
+        void *data;
+        int fd;
+        buffer *buf;
+    } ptr; /* public */
+    struct _ape_pool *next;
+    uint32_t flags;
 } ape_pool_t;
 
 typedef struct _ape_pool_list {
-	ape_pool_t *head;
-	ape_pool_t *queue;
-	ape_pool_t *current;
+    ape_pool_t *head;
+    ape_pool_t *queue;
+    ape_pool_t *current;
 } ape_pool_list_t;
 
 ape_pool_t *ape_new_pool(size_t size, size_t n);
@@ -37,3 +37,6 @@ void ape_destroy_pool_list(ape_pool_list_t *list);
 void ape_destroy_pool_list_ordered(ape_pool_list_t *list);
 
 #endif
+
+// vim: ts=4 sts=4 sw=4 et
+

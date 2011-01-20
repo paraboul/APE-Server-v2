@@ -14,39 +14,43 @@
 
 
 typedef struct {
-	ape_socket *socket;
-	char ip[16];
-	struct {
-		http_parser parser;
-		http_method_t method;
-		ape_transport_t transport;
-		buffer *path;
-		buffer *qs;
-		struct {
-			ape_array_t *list;
-			buffer *tkey;
-			buffer *tval;
-		} headers;
-	} http;
-	
-	struct {
-		struct JSON_parser_struct* parser;
-	} json;
-	
+    ape_socket *socket;
+    char ip[16];
+    struct {
+        http_parser parser;
+        http_method_t method;
+        ape_transport_t transport;
+        buffer *path;
+        buffer *qs;
+        struct {
+            ape_array_t *list;
+            buffer *tkey;
+            buffer *tval;
+        } headers;
+    } http;
+
+    struct {
+        struct JSON_parser_struct* parser;
+    } json;
+
 } ape_client;
 
 typedef struct {
-	char ip[16];
-	ape_array_t *hosts;
-	ape_socket *socket;  /* socket of the server   */
-	uint16_t port;
-	uint32_t nconnected; /* number of fd connected */
+    char ip[16];
+    ape_array_t *hosts;
+    ape_socket *socket;  /* socket of the server   */
+    uint16_t port;
+    uint32_t nconnected; /* number of fd connected */
 } ape_server;
 
 typedef struct _ape_server_conf {
-	
+
 } ape_server_conf_t;
 
-ape_server *ape_server_init(uint16_t port, const char *local_ip, ape_global *ape);
+ape_server *ape_server_init(uint16_t port, const char *local_ip,
+        ape_global *ape);
 
 #endif
+
+// vim: ts=4 sts=4 sw=4 et
+

@@ -27,36 +27,39 @@ typedef struct _ape_global ape_global;
 unsigned int _ape_seed;
 
 typedef struct _ape_module {
-	char *name;
-	int (*ape_module_init)(ape_global *);
+    char *name;
+    int (*ape_module_init)(ape_global *);
 } ape_module_t;
 
 extern ape_module_t  *ape_modules[];
 
 struct _ape_global {
-	int basemem;
-	void *ctx; /* public */
-	cfg_t *conf;
-	
-	unsigned int seed;
-	struct _fdevent events;
-	
-	struct {
-		ares_channel channel;
-		struct {
-			struct _ares_sockets *list;
-			size_t size;
-			size_t used;	
-		} sockets;
+    int basemem;
+    void *ctx; /* public */
+    cfg_t *conf;
 
-	} dns;
-	
-	struct {
-		ape_htable_t *servers;
-	} hashs;
+    unsigned int seed;
+    struct _fdevent events;
 
-	int is_running;
+    struct {
+        ares_channel channel;
+        struct {
+            struct _ares_sockets *list;
+            size_t size;
+            size_t used;
+        } sockets;
+
+    } dns;
+
+    struct {
+        ape_htable_t *servers;
+    } hashs;
+
+    int is_running;
 };
 
 
 #endif
+
+// vim: ts=4 sts=4 sw=4 et
+

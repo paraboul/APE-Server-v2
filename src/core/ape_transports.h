@@ -6,10 +6,10 @@
 #define APE_STATIC_URI "/static/"
 
 typedef enum {
-	APE_TRANSPORT_LP,  /* Long polling */
-	APE_TRANSPORT_WS,  /* WebSocket */
-	APE_TRANSPORT_FT,  /* File transfert */
-	APE_TRANSPORT_NU   /* Unknown transport */
+    APE_TRANSPORT_LP,  /* Long polling */
+    APE_TRANSPORT_WS,  /* WebSocket */
+    APE_TRANSPORT_FT,  /* File transfert */
+    APE_TRANSPORT_NU   /* Unknown transport */
 } ape_transport_t;
 
 
@@ -18,3 +18,6 @@ typedef enum {
 
 
 #endif
+
+// vim: ts=4 sts=4 sw=4 et
+

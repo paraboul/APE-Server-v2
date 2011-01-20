@@ -5,10 +5,10 @@
 #include <sys/types.h>
 
 typedef struct {
-	char *data;
-	
-	size_t size;
-	size_t used;
+    char *data;
+
+    size_t size;
+    size_t used;
 } buffer;
 
 void buffer_init(buffer *b);
@@ -26,3 +26,6 @@ buffer *buffer_utf8_to_buffer(buffer *b);
 #define CONST_STR_LEN(x) x, x ? sizeof(x) - 1 : 0
 
 #endif
+
+// vim: ts=4 sts=4 sw=4 et
+
