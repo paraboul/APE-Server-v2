@@ -58,10 +58,10 @@ static int ape_http_callback(void *ctx, callback_type type,
                 client->http.method = HTTP_POST;
                 break;
         }
-        client->http.path       = buffer_new(32);
-        client->http.headers.list   = ape_array_new(12);
-        client->http.headers.tkey   = buffer_new(16);
-        client->http.headers.tval   = buffer_new(64);
+        client->http.path         = buffer_new(32);
+        client->http.headers.list = ape_array_new(12);
+        client->http.headers.tkey = buffer_new(16);
+        client->http.headers.tval = buffer_new(64);
         break;
     case HTTP_PATH_CHAR:
         buffer_append_char(client->http.path, (unsigned char)value);
@@ -100,10 +100,10 @@ static int ape_http_callback(void *ctx, callback_type type,
         if (APE_TRANSPORT_QS_ISJSON(client->http.transport)) {
             JSON_config config;
             init_JSON_config(&config);
-            config.depth        = 15;
-            config.callback     = NULL;
-            config.callback_ctx = NULL;
-            config.allow_comments   = 0;
+            config.depth                  = 15;
+            config.callback               = NULL;
+            config.callback_ctx           = NULL;
+            config.allow_comments         = 0;
             config.handle_floats_manually = 0;
 
             client->json.parser = new_JSON_parser(&config);
@@ -180,12 +180,12 @@ static void ape_server_on_connect(ape_socket *socket_client, ape_global *ape)
 
     HTTP_PARSER_RESET(&client->http.parser);
 
-    client->http.parser.callback    = ape_http_callback;
-    client->http.parser.ctx     = client;
-    client->http.method     = HTTP_GET;
-    client->http.transport      = APE_TRANSPORT_NU;
-    client->http.path       = NULL;
-    client->http.headers.list   = NULL;
+    client->http.parser.callback = ape_http_callback;
+    client->http.parser.ctx      = client;
+    client->http.method          = HTTP_GET;
+    client->http.transport       = APE_TRANSPORT_NU;
+    client->http.path            = NULL;
+    client->http.headers.list    = NULL;
 
     client->json.parser = NULL;
 
@@ -229,10 +229,10 @@ ape_server *ape_server_init(uint16_t port, const char *local_ip, ape_global *ape
     server->ip[15]  = '\0';
     server->port    = port;
 
-    socket->callbacks.on_read   = ape_server_on_read;
+    socket->callbacks.on_read       = ape_server_on_read;
     socket->callbacks.on_connect    = ape_server_on_connect;
     socket->callbacks.on_disconnect = ape_server_on_disconnect;
-    socket->ctx             = server; /* link the socket to the server struct */
+    socket->ctx                     = server; /* link the socket to the server struct */
 
     printf("[Server] Starting %s:%d\n", server->ip, server->port);
 
