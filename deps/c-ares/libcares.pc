@@ -17,4 +17,4 @@ Requires:
 Requires.private: 
 Cflags: -I${includedir}
 Libs: -L${libdir} -lcares
-Libs.private: -lrt
+Libs.private: 
