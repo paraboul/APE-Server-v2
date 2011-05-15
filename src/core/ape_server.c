@@ -25,17 +25,21 @@ static ape_transport_t ape_get_transport(buffer *path)
 
     for (i = 0; ape_transports_s[i].type != APE_TRANSPORT_NU; i++) {
         if (path->used - 1 < ape_transports_s[i].len) continue;
-
+        
         if (ape_transports_s[i].len == 3 &&
             (*(uint32_t *)
              path->data & 0x00FFFFFF) == *(uint32_t *)
                                             ape_transports_s[i].path) {
-
+            
+            path->pos = ape_transports_s[i].len;
+            
             return ape_transports_s[i].type;
         } else if (ape_transports_s[i].len > 3 &&
             strncmp(path->data, ape_transports_s[i].path,
                 ape_transports_s[i].len) == 0) {
-
+            
+            path->pos = ape_transports_s[i].len;
+            
             return ape_transports_s[i].type;
         }
     }
@@ -144,9 +148,20 @@ static int ape_server_http_ready(ape_client *client)
     }
 
     switch(client->http.transport) {
+    case APE_TRANSPORT_NU:
     case APE_TRANSPORT_FT:
-        printf("FT detected\n");
-        break;
+    {
+        char fullpath[4096];
+        
+        sprintf(fullpath, "%s%s", ((ape_server *)client->server->ctx)->chroot, client->http.path->data);
+        APE_socket_write(client->socket, CONST_STR_LEN("HTTP/1.1 200 OK\n\n"));
+        APE_sendfile(client->socket, fullpath);
+        APE_socket_shutdown(client->socket);
+        printf("URL : %s\n", client->http.path->data);
+        break;        
+        
+    }
+
     default:
         break;
     }
@@ -168,13 +183,13 @@ static void ape_server_on_read(ape_socket *socket_client, ape_global *ape)
     }
 }
 
-static void ape_server_on_connect(ape_socket *socket_client, ape_global *ape)
+static void ape_server_on_connect(ape_socket *socket_server, ape_socket *socket_client, ape_global *ape)
 {
     ape_client *client;
 
     client      = malloc(sizeof(*client)); /* setup the client struct */
     client->socket  = socket_client;
-
+    client->server  = socket_server;
 
     socket_client->ctx = client; /* link the socket to the client struct */
 
@@ -218,7 +233,7 @@ ape_server *ape_server_init(uint16_t port, const char *local_ip, ape_global *ape
         return NULL;
     }
 
-    server      = malloc(sizeof(*server));
+    server          = malloc(sizeof(*server));
     server->socket  = socket;
 
     if (*local_ip == '*' || *local_ip == '\0') {

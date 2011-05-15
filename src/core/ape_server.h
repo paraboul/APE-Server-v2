@@ -14,8 +14,10 @@
 
 
 typedef struct {
-    ape_socket *socket;
     char ip[16];
+    ape_socket *socket;
+    ape_socket *server;
+        
     struct {
         http_parser parser;
         http_method_t method;
@@ -37,6 +39,7 @@ typedef struct {
 
 typedef struct {
     char ip[16];
+    char *chroot;
     ape_array_t *hosts;
     ape_socket *socket;  /* socket of the server   */
     uint16_t port;

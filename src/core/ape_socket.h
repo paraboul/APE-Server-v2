@@ -77,9 +77,9 @@ typedef struct _ape_socket ape_socket;
 
 
 typedef struct {
-    void (*on_read)     (ape_socket *, ape_global *);
+    void (*on_read)         (ape_socket *, ape_global *);
     void (*on_disconnect)   (ape_socket *, ape_global *);
-    void (*on_connect)  (ape_socket *, ape_global *);
+    void (*on_connect)      (ape_socket *, ape_socket *, ape_global *);
 } ape_socket_callbacks;
 
 

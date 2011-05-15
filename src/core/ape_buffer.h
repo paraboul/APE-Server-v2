@@ -3,12 +3,15 @@
 
 #include <stdlib.h>
 #include <sys/types.h>
+#include <stdint.h>
 
 typedef struct {
     char *data;
 
     size_t size;
     size_t used;
+    
+    uint32_t pos;
 } buffer;
 
 void buffer_init(buffer *b);

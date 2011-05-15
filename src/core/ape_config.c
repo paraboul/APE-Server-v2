@@ -28,6 +28,7 @@ cfg_t *ape_read_config(const char *file, ape_global *ape)
     cfg_opt_t server_opts[] =
     {
         CFG_STR_LIST("servername", "{127.0.0.1}", CFGF_NONE),
+        CFG_STR("serverroot", 0, CFGF_NODEFAULT),
         CFG_END()
     };
 
@@ -75,12 +76,16 @@ cfg_t *ape_read_config(const char *file, ape_global *ape)
         }
 
         *sep = ':';
+        
+        //printf("Dir : %s\n", cfg_getstr(server, "serverroot"));
 
         if ((aserver = (ape_server *)ape_array_lookup(srvlst, ipport,
                                             strlen(ipport))) != NULL ||
                         (aserver = ape_server_init(port, ip, ape)) != NULL) {
 
             ape_array_add_ptrn(srvlst, ipport, strlen(ipport), aserver);
+            
+            aserver->chroot = strdup(cfg_getstr(server, "serverroot"));
 
         }
         free(ipport);

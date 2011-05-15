@@ -451,7 +451,6 @@ inline int ape_socket_accept(ape_socket *socket, ape_global *ape)
             (struct sockaddr *)&their_addr,
             (unsigned int *)&sin_size);
 
-        printf("new connection\n");
         if (fd == -1) {
             if (errno == EINTR) continue;
             break;
@@ -468,7 +467,7 @@ inline int ape_socket_accept(ape_socket *socket, ape_global *ape)
         events_add(client->s.fd, client, EVENT_READ|EVENT_WRITE, ape);
 
         if (socket->callbacks.on_connect != NULL) {
-            socket->callbacks.on_connect(client, ape);
+            socket->callbacks.on_connect(socket, client, ape);
         }
     }
 

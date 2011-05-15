@@ -11,6 +11,7 @@ void buffer_init(buffer *b)
     b->data = NULL;
     b->size = 0;
     b->used = 0;
+    b->pos  = 0;
 }
 
 buffer *buffer_new(size_t size)
