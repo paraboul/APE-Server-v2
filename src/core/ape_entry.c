@@ -17,9 +17,36 @@
 #include "ape_config.h"
 #include "ape_pool.h"
 #include "ape_array.h"
+#include "ape_extend.h"
+#include <sys/time.h>
+#include <sys/resource.h>
 
 
 //gcc -g *.c ../modules/*.c -I../core/ -I../../deps/ -I/usr/include/ ../../deps/c-ares/.libs/libcares.a ../../deps/confuse-2.7/src/.libs/libconfuse.a ../../deps/jsapi/src/libjs_static.a -lrt -lstdc++
+
+int ape_running = 0;
+/*ape_module_t *ape_modules[] = {
+	//&ape_inotify_module,
+	&ape_jsapi_module,
+	NULL
+};*/
+
+
+static void signal_handler(int sign)
+{
+	ape_running = 0;
+	printf("[Quit] Shutting down...\n");
+}
+
+static int inc_rlimit(int nofile)
+{
+	struct rlimit rl;
+
+	rl.rlim_cur = nofile;
+	rl.rlim_max = nofile;
+
+	return setrlimit(RLIMIT_NOFILE, &rl);
+}
 
 static ape_global *ape_init()
 {
@@ -28,15 +55,19 @@ static ape_global *ape_init()
 
     if ((ape = malloc(sizeof(*ape))) == NULL) return NULL;
 
-    signal(SIGPIPE, SIG_IGN);
+	inc_rlimit(64000);
 
+    signal(SIGPIPE, SIG_IGN);
+	signal(SIGINT, &signal_handler);
+	signal(SIGTERM, &signal_handler);
+	
     fdev = &ape->events;
     fdev->handler = EVENT_UNKNOWN;
     #ifdef USE_EPOLL_HANDLER
     fdev->handler = EVENT_EPOLL;
     #endif
     #ifdef USE_KQUEUE_HANDLER
-    fdev->handler = EVENT_ KQUEUE;
+    fdev->handler = EVENT_KQUEUE;
     #endif
 
     ape->basemem    = APE_BASEMEM;
@@ -54,6 +85,8 @@ static ape_global *ape_init()
     if ((ape->conf = ape_read_config("../../etc/ape.conf", ape)) == NULL) {
         goto error;
     }
+
+    ape->extend = ape_array_new(8);
 
     return ape;
 
@@ -73,6 +106,22 @@ static void ape_load_modules(ape_global *ape)
             printf("[Module] %s loaded\n", ape_modules[z]->name);
         } else {
             printf("[Module] Failed to load %s\n", ape_modules[z]->name);
+        }
+    }
+    for (z = 0; ape_modules[z]; z++) {
+        if (ape_modules[z]->ape_module_loaded && ape_modules[z]->ape_module_loaded(ape) == 0) {
+            ;
+        }
+    }
+}
+
+static void ape_unload_modules(ape_global *ape)
+{
+    int z;
+
+    for (z = 0; ape_modules[z]; z++) {
+        if (ape_modules[z]->ape_module_destroy && ape_modules[z]->ape_module_destroy(ape) == 0) {
+            printf("[Module] %s unloaded\n", ape_modules[z]->name);
         }
     }
 }
@@ -96,7 +145,15 @@ int main(int argc, char **argv)
 
     ape_load_modules(ape);
 
+    /*printf("ape addr : %p\n", ape);
+
+    ape_add_property(ape->extend, "foo", ape);
+
+    printf("Get addr %p\n", ape_get_property(ape->extend, "foo", 3));*/
+    ape_running = 1;
     events_loop(ape);
+    
+    ape_unload_modules(ape);
 
     return 0;
 }

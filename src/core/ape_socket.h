@@ -80,6 +80,7 @@ typedef struct {
     void (*on_read)         (ape_socket *, ape_global *);
     void (*on_disconnect)   (ape_socket *, ape_global *);
     void (*on_connect)      (ape_socket *, ape_socket *, ape_global *);
+    void (*on_connected)    (ape_socket *, ape_global *);
 } ape_socket_callbacks;
 
 
@@ -90,16 +91,26 @@ typedef struct {
 #define APE_SOCKET_JOB_SHUTDOWN (1 << 3)
 #define APE_SOCKET_JOB_ACTIVE (1 << 4)
 
-typedef ape_pool_t ape_socket_jobs_t;
+typedef struct _ape_socket_jobs_t {
+    union {
+        void *data;
+        int fd;
+        buffer *buf;
+    } ptr; /* public */
+    struct _ape_pool *next;
+    uint32_t flags;
+	off_t offset;
+} ape_socket_jobs_t;
 
 struct _ape_socket {
     ape_fds s;
-
+	
     buffer data_in;
-
+	
     ape_pool_list_t jobs;
 
     void *ctx;  /* public pointer */
+    void *_ctx; /* internal public pointer */
 
     ape_socket_callbacks    callbacks;
 
@@ -132,11 +143,12 @@ int APE_socket_connect(ape_socket *socket, uint16_t port,
 int APE_socket_write(ape_socket *socket, char *data, size_t len);
 int APE_socket_destroy(ape_socket *socket, ape_global *ape);
 void APE_socket_shutdown(ape_socket *socket);
-void APE_sendfile(ape_socket *socket, const char *file);
+int APE_sendfile(ape_socket *socket, const char *file);
 
 int ape_socket_do_jobs(ape_socket *socket);
 inline int ape_socket_accept(ape_socket *socket, ape_global *ape);
 inline int ape_socket_read(ape_socket *socket, ape_global *ape);
+inline void ape_socket_connected(ape_socket *socket, ape_global *ape);
 int ape_socket_write_file(ape_socket *socket, const char *file,
         ape_global *ape);
 

@@ -3,5 +3,6 @@
 
 #include "common.h"
 #include "ape_socket.h"
+#include "ape_server.h"
 
 #endif

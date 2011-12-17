@@ -2,23 +2,34 @@
 #include "ape_events.h"
 #include "ape_socket.h"
 
+extern int ape_running;
+
 void events_loop(ape_global *ape)
 {
     int nfd, fd, bitev;
+    long int ticks = 0, uticks = 0, lticks = 0;
+    
     void *attach;
-
-    while(ape->is_running) {
+    struct timeval t_start, t_end;
+    
+    gettimeofday(&t_start, NULL);
+    while(ape->is_running && ape_running) {
         int i;
 
         if ((nfd = events_poll(&ape->events, 1)) == -1) {
-            printf("events error\n");
             continue;
         }
         for (i = 0; i < nfd; i++) {
-            attach  = events_get_current_fd(&ape->events, i);
+			
+			if ((attach  = events_get_current_fd(&ape->events, i)) == NULL) {
+				continue;
+			}
+			
             bitev   = events_revent(&ape->events, i);
+			//if (attach == NULL) printf("Will failed\n");
             fd  = ((ape_fds *)attach)->fd; /* assuming that ape_fds is the first member */
-
+			printf("Getting : %d on %d %d\n", i, fd, bitev);
+			//if ((ape_fds *)attach)->state == ()
             switch(((ape_fds *)attach)->type) {
 
             case APE_SOCKET:
@@ -58,7 +69,8 @@ void events_loop(ape_global *ape)
 
                                 APE_SOCKET(attach)->states.state = APE_SOCKET_ST_ONLINE;
 
-                                printf("Success connect\n");
+                                ape_socket_connected(APE_SOCKET(attach), ape);
+                                
                             } else {
                                 printf("Failed to connect\n");
                             }
@@ -76,7 +88,20 @@ void events_loop(ape_global *ape)
                 break;
             }
         }
+        
+		gettimeofday(&t_end, NULL);
+		
+		ticks = 0;
+		
+		uticks = 1000000L * (t_end.tv_sec - t_start.tv_sec);
+		uticks += (t_end.tv_usec - t_start.tv_usec);
+		t_start = t_end;
+		lticks += uticks;
 
+		while (lticks >= 1000) {
+			lticks -= 1000;
+			process_tick(ape);
+		}        
     }
 }
 

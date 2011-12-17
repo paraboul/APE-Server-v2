@@ -17,7 +17,7 @@ static int event_epoll_add(struct _fdevent *ev, int fd, int bitadd,
 {
     struct epoll_event kev;
 
-    kev.events = EPOLLET | EPOLLPRI;
+    kev.events = ((bitadd & EVENT_LEVEL ? 0 : EPOLLET)) | EPOLLPRI;
 
     if (bitadd & EVENT_READ) {
         kev.events |= EPOLLIN;
@@ -30,7 +30,6 @@ static int event_epoll_add(struct _fdevent *ev, int fd, int bitadd,
     memset(&kev.data, 0, sizeof(kev.data));
 
     kev.data.ptr = attach;
-
 
     if (epoll_ctl(ev->epoll_fd, EPOLL_CTL_ADD, fd, &kev) == -1) {
         return -1;

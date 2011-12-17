@@ -21,6 +21,7 @@
 
 #include "ape_socket.h"
 #include "ape_dns.h"
+#include "ape_timers.h"
 
 #include <stdio.h>
 #include <sys/time.h>
@@ -31,8 +32,9 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/uio.h>
-#include <sys/sendfile.h>
+//#include <sys/sendfile.h>
 #include <limits.h>
+#include <string.h>
 
 /*
 Use only one syscall (ioctl) if FIONBIO is defined
@@ -93,11 +95,13 @@ ape_socket *APE_socket_new(uint8_t pt, int from)
     ret->states.type    = APE_SOCKET_TP_UNKNOWN;
     ret->states.state   = APE_SOCKET_ST_PENDING;
     ret->states.proto   = pt;
+    ret->ctx            = NULL;
 
 
-    ret->callbacks.on_read      = NULL;
+    ret->callbacks.on_read          = NULL;
     ret->callbacks.on_disconnect    = NULL;
-    ret->callbacks.on_connect   = NULL;
+    ret->callbacks.on_connect       = NULL;
+    ret->callbacks.on_connected     = NULL;
 
     ret->remote_port = 0;
 
@@ -115,7 +119,7 @@ int APE_socket_listen(ape_socket *socket, uint16_t port,
     int reuse_addr = 1;
     int timeout = 2;
 
-    if (port == 0 || port > 65535) {
+    if (port == 0) {
         return -1;
     }
 
@@ -136,8 +140,15 @@ int APE_socket_listen(ape_socket *socket, uint16_t port,
 
         return -1;
     }
+#ifdef TCP_DEFER_ACCEPT
     setsockopt(socket->s.fd, IPPROTO_TCP, TCP_DEFER_ACCEPT, &timeout,
             sizeof(int));
+#elif SO_ACCEPTFILTER
+	{
+		accept_filter_arg afa = {"dataready", ""};
+		setsockopt(socket->s.fd, SOL_SOCKET, SO_ACCEPTFILTER, &afa, sizeof(afa));
+	}
+#endif
     socket->states.type = APE_SOCKET_TP_SERVER;
     socket->states.state = APE_SOCKET_ST_ONLINE;
 
@@ -168,6 +179,7 @@ static int ape_socket_connect_ready_to_connect(const char *remote_ip,
             errno != EINPROGRESS) {
 
         APE_socket_destroy(socket, ape);
+        printf("not ready to connect\n");
         return -1;
     }
 
@@ -183,7 +195,7 @@ static int ape_socket_connect_ready_to_connect(const char *remote_ip,
 int APE_socket_connect(ape_socket *socket, uint16_t port,
         const char *remote_ip_host, ape_global *ape)
 {
-    if (port == 0 || port > 65535) {
+    if (port == 0) {
         APE_socket_destroy(socket, ape);
         return -1;
     }
@@ -197,26 +209,30 @@ int APE_socket_connect(ape_socket *socket, uint16_t port,
 
 void APE_socket_shutdown(ape_socket *socket)
 {
+	printf("Ask for shutdown\n");
     if (socket->states.state != APE_SOCKET_ST_ONLINE) {
+		printf("Not online\n");
         return;
     }
     if (socket->states.flags & APE_SOCKET_WOULD_BLOCK ||
             socket->jobs.head->flags & APE_SOCKET_JOB_ACTIVE) {
         ape_socket_job_get_slot(socket, APE_SOCKET_JOB_SHUTDOWN);
+		printf("Pushed to queue\n");
         return;
     }
-
+	printf("Shutdown!\n");
     shutdown(socket->s.fd, 2);
 }
 
-void APE_sendfile(ape_socket *socket, const char *file)
+int APE_sendfile(ape_socket *socket, const char *file)
 {
-    int fd, nwrite = 0;
+    int fd;
     ape_socket_jobs_t *job;
+	off_t offset_file = 0, nwrite = 0;
 
     if ((fd = open(file, O_RDONLY)) == -1) {
-        printf("Unable to open file %s\n", file);
-        return;
+		printf("Failed to open %s\n", file);
+        return 0;
     }
 
     if (socket->states.flags & APE_SOCKET_WOULD_BLOCK ||
@@ -226,20 +242,35 @@ void APE_sendfile(ape_socket *socket, const char *file)
         job          = ape_socket_job_get_slot(socket, APE_SOCKET_JOB_SENDFILE);
         job->ptr.fd  = fd;
 
-        return;
+        return 1;
     }
-
+#if (defined(__APPLE__) || defined(__FREEBSD__))
+	nwrite = 4096;
+	while (sendfile(fd, socket->s.fd, offset_file, &nwrite, NULL, 0) == 0 && nwrite != 0) {
+		offset_file += nwrite;
+		nwrite = 4096;
+	}
+	
+	if (nwrite != 0) {
+		nwrite = -1;
+	}
+#else
     do {
-        nwrite = sendfile(socket->s.fd, fd, NULL, 4096);
+		nwrite = sendfile(socket->s.fd, fd, NULL, 4096);
     } while (nwrite > 0);
-
+#endif
     if (nwrite == -1 && errno == EAGAIN) {
         socket->states.flags  |= APE_SOCKET_WOULD_BLOCK;
         job          = ape_socket_job_get_slot(socket, APE_SOCKET_JOB_SENDFILE);
         job->ptr.fd  = fd;
+		/* BSD/OSX require offset */
+		job->offset  = offset_file;
     } else {
+		printf("File sent...\n");
         close(fd);
     }
+    
+    return 1;
 }
 
 int APE_socket_write(ape_socket *socket, char *data, size_t len)
@@ -263,7 +294,7 @@ int APE_socket_write(ape_socket *socket, char *data, size_t len)
             if (errno == EAGAIN && r_bytes != 0) {
                 socket->states.flags |= APE_SOCKET_WOULD_BLOCK;
                 ape_socket_queue_data(socket, data, len, t_bytes);
-
+				printf("Not finished\n");
                 return r_bytes;
             } else {
                 return -1;
@@ -278,6 +309,12 @@ int APE_socket_write(ape_socket *socket, char *data, size_t len)
     return 0;
 }
 
+void ape_socket_free(ape_socket *socket)
+{
+	printf("Socket collected\n");
+	free(socket);
+}
+
 int APE_socket_destroy(ape_socket *socket, ape_global *ape)
 {
     close(socket->s.fd);
@@ -288,7 +325,7 @@ int APE_socket_destroy(ape_socket *socket, ape_global *ape)
 
     ape_destroy_pool(socket->jobs.head);
 
-    free(socket);
+	add_timeout(1, ape_socket_free, socket, ape);
 }
 
 int ape_socket_do_jobs(ape_socket *socket)
@@ -310,7 +347,7 @@ int ape_socket_do_jobs(ape_socket *socket)
     ape_socket_jobs_t *job;
     struct iovec chunks[max_chunks];
 
-    job = socket->jobs.head;
+    job = (ape_socket_jobs_t *)socket->jobs.head;
 
     while(job != NULL && job->flags & APE_SOCKET_JOB_ACTIVE) {
         switch(job->flags & ~(APE_POOL_ALL_FLAGS | APE_SOCKET_JOB_ACTIVE)) {
@@ -335,7 +372,8 @@ int ape_socket_do_jobs(ape_socket *socket)
             n = writev(socket->s.fd, chunks, i);
             /* ERR */
             if (n == -1) {
-                job = job->next;
+        		printf("Err in writev %s\n", strerror(errno));
+                job = (ape_socket_jobs_t *)job->next;
                 return 0;
             }
             packet = (ape_socket_packet_t *)plist->head;
@@ -369,12 +407,20 @@ int ape_socket_do_jobs(ape_socket *socket)
 
         case APE_SOCKET_JOB_SENDFILE:
         {
-            int nwrite;
-
+            off_t nwrite = 4096;
+#if (defined(__APPLE__) || defined(__FREEBSD__))
+			while (sendfile(job->ptr.fd, socket->s.fd, job->offset, &nwrite, NULL, 0) == 0 && nwrite != 0) {
+				job->offset += nwrite;
+				nwrite = 4096;
+			}
+			if (nwrite != 0) {
+				nwrite = -1;
+			}
+#elif
             do {
                 nwrite = sendfile(socket->s.fd, job->ptr.fd, NULL, 4096);
             } while (nwrite > 0);
-
+#endif
             /* Job not finished */
             if (nwrite == -1 && errno == EAGAIN) {
                 socket->states.flags |= APE_SOCKET_WOULD_BLOCK;
@@ -382,7 +428,8 @@ int ape_socket_do_jobs(ape_socket *socket)
             }
             /* Job finished */
             close(job->ptr.fd);
-
+			job->offset = 0;
+			
             break;
         }
 
@@ -395,7 +442,7 @@ int ape_socket_do_jobs(ape_socket *socket)
         }
 
         job->flags &= ~APE_SOCKET_JOB_ACTIVE;
-        job = ape_pool_head_to_current(&socket->jobs);
+        job = (ape_socket_jobs_t *)ape_pool_head_to_current(&socket->jobs);
 
     }
 
@@ -439,6 +486,12 @@ static int ape_socket_queue_buffer(ape_socket *socket, buffer *b)
     return ape_socket_queue_data(socket, b->data, b->used, 0);
 }
 
+inline void ape_socket_connected(ape_socket *socket, ape_global *ape)
+{
+    if (socket->callbacks.on_connected != NULL) {
+        socket->callbacks.on_connected(socket, ape);
+    }
+}
 
 inline int ape_socket_accept(ape_socket *socket, ape_global *ape)
 {
@@ -478,20 +531,22 @@ inline int ape_socket_accept(ape_socket *socket, ape_global *ape)
 inline int ape_socket_read(ape_socket *socket, ape_global *ape)
 {
     ssize_t nread;
-
+	printf("on read (%d)\n", socket->data_in.used);
     do {
         /* TODO : avoid extra calling (avoid realloc) */
         buffer_prepare(&socket->data_in, 2048);
-
+		printf("[READ] ask for %d bytes\n", socket->data_in.size - socket->data_in.used);
         nread = read(socket->s.fd,
             socket->data_in.data + socket->data_in.used,
             socket->data_in.size - socket->data_in.used);
-
+		
+		printf("Nread : %d %d\n", socket->data_in.used, nread);
         socket->data_in.used += ape_max(nread, 0);
 
     } while (nread > 0);
 
     if (socket->data_in.used != 0) {
+		printf("Used : %d\n", socket->data_in.used);
         //buffer_append_char(&socket->data_in, '\0');
 
         if (socket->callbacks.on_read != NULL) {
@@ -501,6 +556,7 @@ inline int ape_socket_read(ape_socket *socket, ape_global *ape)
         socket->data_in.used = 0;
     }
     if (nread == 0) {
+		printf("Disconnected\n");
         if (socket->callbacks.on_disconnect != NULL) {
             socket->callbacks.on_disconnect(socket, ape);
         }
@@ -516,7 +572,7 @@ inline int ape_socket_read(ape_socket *socket, ape_global *ape)
 
 static ape_socket_jobs_t *ape_socket_job_get_slot(ape_socket *socket, int type)
 {
-    ape_socket_jobs_t *jobs = socket->jobs.current;
+    ape_socket_jobs_t *jobs = (ape_socket_jobs_t *)socket->jobs.current;
 
     /* If we request a write job we can push the data to the iov list */
     if ((type == APE_SOCKET_JOB_WRITEV &&
@@ -527,11 +583,11 @@ static ape_socket_jobs_t *ape_socket_job_get_slot(ape_socket *socket, int type)
         return jobs;
     }
 
-    jobs = (jobs == socket->jobs.queue ?
+    jobs = (ape_socket_jobs_t *)(jobs == (ape_socket_jobs_t *)socket->jobs.queue ?
         ape_grow_pool(&socket->jobs, sizeof(ape_socket_jobs_t), 2) :
         jobs->next);
 
-    socket->jobs.current = jobs;
+    socket->jobs.current = (ape_pool_t *)jobs;
     jobs->flags |= APE_SOCKET_JOB_ACTIVE | type;
 
     return jobs;
@@ -545,7 +601,6 @@ static void ape_init_job_list(ape_pool_list_t *list, size_t n)
 static ape_socket_jobs_t *ape_socket_new_jobs_queue(size_t n)
 {
     return (ape_socket_jobs_t *)ape_new_pool(sizeof(ape_socket_jobs_t), n);
-
 }
 
 static ape_pool_list_t *ape_socket_new_packet_queue(size_t n)

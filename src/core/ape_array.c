@@ -10,7 +10,7 @@ ape_array_t *ape_array_new(size_t n)
     return array;
 }
 
-static ape_array_item_t *ape_array_lookup_item(ape_array_t *array,
+ape_array_item_t *ape_array_lookup_item(ape_array_t *array,
         const char *key, int klen)
 {
     buffer *k, *v;
@@ -29,6 +29,18 @@ buffer *ape_array_lookup(ape_array_t *array, const char *key, int klen)
     APE_A_FOREACH(array, k, v) {
         if (k->used == klen && strncasecmp(key, k->data, klen) == 0) {
             return v;
+        }
+    }
+
+    return NULL;
+}
+
+void *ape_array_lookup_data(ape_array_t *array, const char *key, int klen)
+{
+    buffer *k, *v;
+    APE_A_FOREACH(array, k, v) {
+        if (k->used == klen && strncasecmp(key, k->data, klen) == 0) {
+            return __array_item->pool.ptr.data;
         }
     }
 
@@ -101,14 +113,16 @@ void ape_array_add_b(ape_array_t *array, buffer *key, buffer *value)
     slot->pool.ptr.buf = value;
 }
 
-void ape_array_add_ptr(ape_array_t *array, buffer *key, void *ptr)
+ape_array_item_t *ape_array_add_ptr(ape_array_t *array, buffer *key, void *ptr)
 {
     ape_array_item_t *slot = ape_array_add_s(array, key);
 
     slot->pool.ptr.data = ptr;
+    
+    return slot;
 }
 
-void ape_array_add_ptrn(ape_array_t *array, const char *key,
+ape_array_item_t *ape_array_add_ptrn(ape_array_t *array, const char *key,
         int klen, void *ptr)
 {
     buffer *k;
@@ -116,7 +130,7 @@ void ape_array_add_ptrn(ape_array_t *array, const char *key,
 
     buffer_append_string_n(k, key, klen);
 
-    ape_array_add_ptr(array, k, ptr);
+    return ape_array_add_ptr(array, k, ptr);
 }
 
 void ape_array_add_n(ape_array_t *array, const char *key,

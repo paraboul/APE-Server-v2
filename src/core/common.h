@@ -7,7 +7,7 @@
 #include <c-ares/ares.h>
 
 
-#define APE_BASEMEM 4096
+#define APE_BASEMEM 40960
 #define __REV "2.0wip"
 
 #define ape_min(val1, val2)  ((val1 > val2) ? (val2) : (val1))
@@ -23,12 +23,17 @@ typedef struct _ape_global ape_global;
 #include "ape_config.h"
 #include "ape_events.h"
 #include "ape_hash.h"
+#include "ape_extend.h"
 
 unsigned int _ape_seed;
+struct _ape_client;
 
 typedef struct _ape_module {
     char *name;
     int (*ape_module_init)(ape_global *);
+    int (*ape_module_loaded)(ape_global *);
+    int (*ape_module_request)(struct _ape_client *, ape_global *);
+    int (*ape_module_destroy)(ape_global *);
 } ape_module_t;
 
 extern ape_module_t  *ape_modules[];
@@ -54,8 +59,14 @@ struct _ape_global {
     struct {
         ape_htable_t *servers;
     } hashs;
-
+    
+	struct {
+		struct _ticks_callback *timers;
+		unsigned int ntimers;
+	} timers;
+	
     int is_running;
+    ape_extend_t *extend;
 };
 
 

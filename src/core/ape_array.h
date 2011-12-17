@@ -18,14 +18,17 @@ struct _ape_array_item {
 } typedef ape_array_item_t;
 
 ape_array_t *ape_array_new(size_t n);
+ape_array_item_t *ape_array_lookup_item(ape_array_t *array,
+        const char *key, int klen);
 buffer *ape_array_lookup(ape_array_t *array, const char *key, int klen);
+void *ape_array_lookup_data(ape_array_t *array, const char *key, int klen);
 
 void ape_array_add_b(ape_array_t *array, buffer *key, buffer *value);
 void ape_array_add_n(ape_array_t *array, const char *key, int klen, const char *value, int vlen);
 void ape_array_add(ape_array_t *array, const char *key, const char *value);
 void ape_array_destroy(ape_array_t *array);
-void ape_array_add_ptr(ape_array_t *array, buffer *key, void *ptr);
-void ape_array_add_ptrn(ape_array_t *array, const char *key, int klen, void *ptr);
+ape_array_item_t *ape_array_add_ptr(ape_array_t *array, buffer *key, void *ptr);
+ape_array_item_t *ape_array_add_ptrn(ape_array_t *array, const char *key, int klen, void *ptr);
 
 #define APE_A_FOREACH(_array, _key, _val) \
         ape_array_item_t *__array_item; \

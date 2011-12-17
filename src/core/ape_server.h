@@ -10,14 +10,53 @@
 #include "ape_transports.h"
 
 
-#define APE_CLIENT(socket) ((ape_client *)socket->ctx)
+#define APE_CLIENT(socket) ((ape_client *)socket->_ctx)
 
+typedef enum {
+    WS_STEP_KEY,
+    WS_STEP_START,
+    WS_STEP_LENGTH,
+    WS_STEP_SHORT_LENGTH,
+    WS_STEP_EXTENDED_LENGTH,
+    WS_STEP_DATA,
+    WS_STEP_END
+} ws_payload_step;
 
-typedef struct {
+typedef struct _websocket_state
+{
+	const char *data;
+	unsigned int offset;
+	unsigned short int error;
+	
+	//ws_version version;
+    
+	struct {
+	    /* cypher key */
+	    unsigned char val[4];
+	    int pos;
+	} key;
+    
+    #pragma pack(2)
+	struct {
+	    unsigned char start;
+	    unsigned char length; /* 7 bit length */
+	    union {
+	        unsigned short short_length; /* 16 bit length */
+	        unsigned long long int extended_length; /* 64 bit length */
+	    };
+	} frame_payload;
+	#pragma pack()
+	ws_payload_step step;
+	int data_pos;
+	int frame_pos;
+} websocket_state;
+
+typedef struct _ape_client {
     char ip[16];
     ape_socket *socket;
     ape_socket *server;
-        
+    websocket_state *ws_state;
+
     struct {
         http_parser parser;
         http_method_t method;

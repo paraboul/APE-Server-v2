@@ -352,7 +352,7 @@
 /* #undef NO_MINUS_C_MINUS_O */
 
 /* cpu-machine-OS */
-#define OS "x86_64-apple-darwin10.6.0"
+#define OS "x86_64-apple-darwin11.2.0"
 
 /* Name of package */
 #define PACKAGE "c-ares"

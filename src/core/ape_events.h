@@ -15,6 +15,8 @@
 /* Generics flags */
 #define EVENT_READ 0x01
 #define EVENT_WRITE 0x02
+#define EVENT_LEVEL 0x04
+#define EVENT_CANCEL 0x08
 
 #define _APE_FD_DELEGATE_TPL  \
     ape_fds s; \

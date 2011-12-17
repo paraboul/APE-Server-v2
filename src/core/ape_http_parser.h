@@ -68,16 +68,16 @@ typedef enum states {
     NR_STATES
 } parser_state;
 
-typedef int (*HTTP_parser_callback)(void* ctx, callback_type type,
+typedef int (*HTTP_parser_callback)(void **ctx, callback_type type,
         int value, uint32_t step);
 
 typedef struct _http_parser {
     HTTP_parser_callback callback;  /* user callback function */
-    void *ctx;          /* user defined */
+    void *ctx[2];              /* user defined */
     uint32_t rx;            /* flag (32bit) (pass through states) */
     uint32_t step;          /* char number */
     uint32_t cl;            /* content-length */ /* TODO : store cl in rx */
-    parser_state state;         /* state */
+    parser_state state;     /* state */
 } http_parser;
 
 
@@ -98,7 +98,8 @@ int parse_http_char(struct _http_parser *parser, const unsigned char c);
         (p)->cl = 0; \
         (p)->callback = NULL; \
         (p)->rx = 0; \
-        (p)->ctx = NULL; \
+        (p)->ctx[0] = NULL; \
+        (p)->ctx[1] = NULL; \
     } while(0) \
 
 #endif

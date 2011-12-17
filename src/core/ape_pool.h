@@ -1,12 +1,10 @@
 #ifndef __APE_POOL_H
 #define __APE_POOL_H
 
-#include "common.h"
 #include "ape_buffer.h"
 
 #define APE_POOL_ALLOC 0x01
 #define APE_POOL_ALL_FLAGS APE_POOL_ALLOC
-
 
 typedef struct _ape_pool {
     union {
