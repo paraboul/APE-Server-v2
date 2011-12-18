@@ -24,10 +24,11 @@ typedef enum {
 
 typedef struct _websocket_state
 {
-	const char *data;
+	unsigned char *data;
+	void (*on_frame)(struct _ape_client *, const char *, ssize_t, ape_global *);
+	
 	unsigned int offset;
 	unsigned short int error;
-	
 	//ws_version version;
     
 	struct {
@@ -48,6 +49,7 @@ typedef struct _websocket_state
 	#pragma pack()
 	ws_payload_step step;
 	int data_pos;
+	int data_inkey;
 	int frame_pos;
 } websocket_state;
 

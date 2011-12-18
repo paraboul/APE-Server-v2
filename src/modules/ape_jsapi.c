@@ -1080,11 +1080,29 @@ static int ape_module_jsapi_request(ape_client *client, ape_global *ape)
 
 }
 
+static int ape_module_jsapi_wsframe(ape_client *client, const char *data, ssize_t length, ape_global *ape)
+{
+    JSContext *cx = ape_get_property(ape->extend, "jsapi", 5);
+    JSObject *server = ape_get_property(ape->extend, "jsserver", 8);
+    JSObject *socket = ape_socket_to_jsobj(cx, client->socket, ape);
+	jsval args[1];
+	JSString *jsdata;
+	
+	jsdata = JS_NewStringCopyN(cx, data, length);
+	
+	args[0] = STRING_TO_JSVAL(jsdata);
+	
+	ape_js_trigger_event(cx, server, "wsframe", 1, args);
+
+	return 0;
+}
+
 ape_module_t ape_jsapi_module = {
 	"APE JSAPI",
 	ape_module_jsapi_init,
 	ape_module_jsapi_loaded,
 	ape_module_jsapi_request,
+	ape_module_jsapi_wsframe,
 	ape_module_jsapi_destroy,
 	/*ape_module_jsapi_finish*/
 };

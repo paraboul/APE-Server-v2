@@ -531,22 +531,18 @@ inline int ape_socket_accept(ape_socket *socket, ape_global *ape)
 inline int ape_socket_read(ape_socket *socket, ape_global *ape)
 {
     ssize_t nread;
-	printf("on read (%d)\n", socket->data_in.used);
     do {
         /* TODO : avoid extra calling (avoid realloc) */
         buffer_prepare(&socket->data_in, 2048);
-		printf("[READ] ask for %d bytes\n", socket->data_in.size - socket->data_in.used);
         nread = read(socket->s.fd,
             socket->data_in.data + socket->data_in.used,
             socket->data_in.size - socket->data_in.used);
-		
-		printf("Nread : %d %d\n", socket->data_in.used, nread);
+
         socket->data_in.used += ape_max(nread, 0);
 
     } while (nread > 0);
 
     if (socket->data_in.used != 0) {
-		printf("Used : %d\n", socket->data_in.used);
         //buffer_append_char(&socket->data_in, '\0');
 
         if (socket->callbacks.on_read != NULL) {

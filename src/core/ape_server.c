@@ -306,6 +306,11 @@ static int ape_http_callback(void **ctx, callback_type type,
     return 1;
 }
 
+static void ape_server_on_ws_frame(ape_client *client, const char *data, ssize_t length, ape_global *ape)
+{
+	APE_EVENT(wsframe, client, data, length, ape);
+}
+
 static int ape_server_http_ready(ape_client *client, ape_global *ape)
 {
 #define REQUEST_HEADER(header) ape_array_lookup(client->http.headers.list, CONST_STR_LEN(header))
@@ -341,7 +346,7 @@ static int ape_server_http_ready(ape_client *client, ape_global *ape)
 			client->ws_state->frame_payload.extended_length = 0;
 			client->ws_state->data_pos  = 0;
 			client->ws_state->frame_pos = 0;
-			
+			client->ws_state->on_frame = ape_server_on_ws_frame;
 			
 			return 1;
 		}
@@ -381,33 +386,30 @@ static void ape_server_on_read_ws(ape_socket *socket_client, ape_global *ape)
 {
 	const buffer *buffer = &socket_client->data_in;
 	unsigned char *pData;
-	printf("Reading...WS %d\n", socket_client->data_in.used);
 	
 	#if 1
 	websocket_state *websocket = APE_CLIENT(socket_client)->ws_state;
-	
-	printf("Starting at offset : %d\n", websocket->offset);
-	
+
     for (pData = (unsigned char *)&buffer->data[websocket->offset]; websocket->offset < buffer->used; websocket->offset++, pData++) {
         switch(websocket->step) {
             case WS_STEP_KEY:
                 /* Copy the xor key (32 bits) */
                 websocket->key.val[websocket->key.pos] = *pData;
-				printf("Reading key\n");
+
                 if (++websocket->key.pos == 4) {
-					printf("Key read\n");
                     websocket->step = WS_STEP_DATA;
+					websocket->data_inkey = 0;
                 }
                 break;
             case WS_STEP_START:
-                /* Contain fragmentaiton infos & opcode (+ reserved bits) */
+                /* Contain fragmentation infos & opcode (+ reserved bits) */
                 websocket->frame_payload.start = *pData;
-
                 websocket->step = WS_STEP_LENGTH;
                 break;
             case WS_STEP_LENGTH:
                 /* Check for MASK bit */
                 if (!(*pData & 0x80)) {
+					//websocket->step = 
                     return;
                 }
                 switch (*pData & 0x7F) { /* 7bit length */
@@ -440,24 +442,27 @@ static void ape_server_on_read_ws(ape_socket *socket_client, ape_global *ape)
                 if (websocket->frame_pos == 9) {
                     websocket->frame_payload.extended_length = ntohl(websocket->frame_payload.extended_length >> 32);
                     websocket->step = WS_STEP_KEY;
-                }        
+                }
                 break;
             case WS_STEP_DATA:
                 if (websocket->data_pos == 0) {
                     websocket->data_pos = websocket->offset;
+					websocket->data = malloc(sizeof(char) * websocket->frame_payload.extended_length + 1);
                 }
                 
-                *pData ^= websocket->key.val[(websocket->frame_pos - websocket->data_pos) % 4];
-				printf("Val : %c\n", *pData);
+                //*pData ^= websocket->key.val[websocket->data_inkey++ % 4];
+				websocket->data[websocket->data_inkey] = *pData ^ websocket->key.val[websocket->data_inkey % 4];
+				websocket->data_inkey++;
+				
                 if (--websocket->frame_payload.extended_length == 0) {
                     unsigned char saved;
-                    
-                    websocket->data = &buffer->data[websocket->data_pos];
+					websocket->data[websocket->data_inkey] = '\0';
+                    //websocket->data = &buffer->data[websocket->data_pos];
                     websocket->step = WS_STEP_START;
                     websocket->frame_pos = -1;
                     websocket->frame_payload.extended_length = 0;
                     websocket->data_pos = 0;
-                    websocket->key.pos = 0;
+                    websocket->key.pos  = 0;
 
                     switch(websocket->frame_payload.start & 0x0F) {
                         case 0x8:
@@ -472,7 +477,7 @@ static void ape_server_on_read_ws(ape_socket *socket_client, ape_global *ape)
                         }
                         case 0x9:
                         {
-                            int body_length = &buffer->data[websocket->offset+1] - websocket->data;
+							int body_length = /*&buffer->data[websocket->offset+1] - websocket->data;*/ 0;
                             char payload_head[2] = { 0x8a, body_length & 0x7F };
                             
                             /* All control frames MUST be 125 bytes or less */
@@ -493,11 +498,14 @@ static void ape_server_on_read_ws(ape_socket *socket_client, ape_global *ape)
                         case 0xA: /* Never called as long as we never ask for pong */
                             break;
                         default:
+							websocket->on_frame(APE_CLIENT(socket_client), websocket->data, websocket->data_inkey, ape);
+							#if 0
                             /* Data frame */
                             saved = buffer->data[websocket->offset+1];
                             buffer->data[websocket->offset+1] = '\0';
                             //parser->onready(parser, g_ape);
-                            buffer->data[websocket->offset+1] = saved;                            
+                            buffer->data[websocket->offset+1] = saved;   
+                         	#endif
                             break;
                     }
                     

@@ -33,6 +33,7 @@ typedef struct _ape_module {
     int (*ape_module_init)(ape_global *);
     int (*ape_module_loaded)(ape_global *);
     int (*ape_module_request)(struct _ape_client *, ape_global *);
+	int (*ape_module_wsframe)(struct _ape_client *, const char*, ssize_t, ape_global *);
     int (*ape_module_destroy)(ape_global *);
 } ape_module_t;
 
