@@ -1077,10 +1077,10 @@ static int ape_module_jsapi_request(ape_client *client, ape_global *ape)
     
     
     /* TODO: create Server global object with events request and trigger it here */
-
+	return 0;
 }
 
-static int ape_module_jsapi_wsframe(ape_client *client, const char *data, ssize_t length, ape_global *ape)
+static int ape_module_jsapi_wsframe(ape_client *client, const unsigned char *data, ssize_t length, ape_global *ape)
 {
     JSContext *cx = ape_get_property(ape->extend, "jsapi", 5);
     JSObject *server = ape_get_property(ape->extend, "jsserver", 8);

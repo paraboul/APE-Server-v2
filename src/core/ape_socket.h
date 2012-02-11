@@ -30,6 +30,7 @@
 
 /* get a ape_socket pointer from event returns */
 #define APE_SOCKET(attach) ((ape_socket *)attach)
+#define APE_SOCKET_ISSECURE(socket) socket->SSL.issecure
 
 #ifdef TCP_CORK
     #define PACK_TCP(fd) \
@@ -56,7 +57,8 @@ enum ape_socket_flags {
 
 enum ape_socket_proto {
     APE_SOCKET_PT_TCP,
-    APE_SOCKET_PT_UDP
+    APE_SOCKET_PT_UDP,
+	APE_SOCKET_PT_SSL
 };
 
 enum ape_socket_type {
@@ -72,6 +74,12 @@ enum ape_socket_state {
     APE_SOCKET_ST_OFFLINE
 };
 
+typedef enum _ape_socket_data_autorelease {
+	APE_DATA_STATIC,
+	APE_DATA_AUTORELEASE,
+	APE_DATA_OWN,
+	APE_DATA_COPY
+} ape_socket_data_autorelease;
 
 typedef struct _ape_socket ape_socket;
 
@@ -120,6 +128,11 @@ struct _ape_socket {
         uint8_t type;
         uint8_t state;
     } states;
+	
+	struct {
+		uint8_t issecure;
+		struct _ape_ssl *ssl;
+	} SSL;
 
     uint16_t    remote_port;
 };
@@ -131,6 +144,7 @@ struct _ape_socket_packet {
     ape_pool_t pool;
     size_t len;
     size_t offset;
+	ape_socket_data_autorelease data_type;
 } typedef ape_socket_packet_t;
 
 
@@ -140,11 +154,11 @@ int APE_socket_listen(ape_socket *socket, uint16_t port,
         const char *local_ip, ape_global *ape);
 int APE_socket_connect(ape_socket *socket, uint16_t port,
         const char *remote_ip_host, ape_global *ape);
-int APE_socket_write(ape_socket *socket, char *data, size_t len);
+int APE_socket_write(ape_socket *socket, unsigned char *data,
+	size_t len, ape_socket_data_autorelease data_type);
 int APE_socket_destroy(ape_socket *socket, ape_global *ape);
 void APE_socket_shutdown(ape_socket *socket);
 int APE_sendfile(ape_socket *socket, const char *file);
-
 int ape_socket_do_jobs(ape_socket *socket);
 inline int ape_socket_accept(ape_socket *socket, ape_global *ape);
 inline int ape_socket_read(ape_socket *socket, ape_global *ape);

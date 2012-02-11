@@ -1,6 +1,9 @@
 #include "common.h"
 #include "ape_events.h"
 #include "ape_socket.h"
+#include "ape_timers.h"
+
+#include <sys/time.h>
 
 extern int ape_running;
 
@@ -35,7 +38,9 @@ void events_loop(ape_global *ape)
             case APE_SOCKET:
                 if (APE_SOCKET(attach)->states.type == APE_SOCKET_TP_SERVER) {
                     if (bitev & EVENT_READ) {
-                        if (APE_SOCKET(attach)->states.proto == APE_SOCKET_PT_TCP) {
+                        if (APE_SOCKET(attach)->states.proto == APE_SOCKET_PT_TCP ||
+							APE_SOCKET(attach)->states.proto == APE_SOCKET_PT_SSL) {
+								
                             ape_socket_accept(APE_SOCKET(attach), ape);
                         } else {
                             printf("read on UDP\n");

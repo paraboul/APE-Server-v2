@@ -15,6 +15,7 @@ int ape_config_server_setup(cfg_t *conf, ape_server *server)
     for (i = 0; i < cfg_size(conf, "servername"); i++) {
         printf("Host : %s\n", cfg_getnstr(conf, "servername", i));
     }
+	return 0;
 }
 
 cfg_t *ape_read_config(const char *file, ape_global *ape)
@@ -25,10 +26,19 @@ cfg_t *ape_read_config(const char *file, ape_global *ape)
     int i;
     char *ipport;
 
+    cfg_opt_t ssl_opts[] =
+    {
+        CFG_STR("cert", 0, CFGF_NODEFAULT),
+		CFG_BOOL("enable", cfg_false, CFGF_NODEFAULT),
+        CFG_END()
+    };
+
+
     cfg_opt_t server_opts[] =
     {
         CFG_STR_LIST("servername", "{127.0.0.1}", CFGF_NONE),
         CFG_STR("serverroot", 0, CFGF_NODEFAULT),
+		CFG_SEC("ssl", ssl_opts, CFGF_NONE),
         CFG_END()
     };
 
@@ -71,7 +81,7 @@ cfg_t *ape_read_config(const char *file, ape_global *ape)
         }
 
         port = atoi(&sep[1]);
-        if (port == 0 || port > 65535) {
+        if (port == 0) {
             goto error;
         }
 
@@ -81,7 +91,7 @@ cfg_t *ape_read_config(const char *file, ape_global *ape)
 
         if ((aserver = (ape_server *)ape_array_lookup(srvlst, ipport,
                                             strlen(ipport))) != NULL ||
-                        (aserver = ape_server_init(port, ip, ape)) != NULL) {
+                        (aserver = ape_server_init(port, ip, "/Users/anthonycatel/ape2/APE-Server-v2/etc/self.pem", ape)) != NULL) {
 
             ape_array_add_ptrn(srvlst, ipport, strlen(ipport), aserver);
             

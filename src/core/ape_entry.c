@@ -7,6 +7,8 @@
 #include <time.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <sys/time.h>
+#include <sys/resource.h>
 
 #include "ape_hash.h"
 #include "ape_socket.h"
@@ -18,18 +20,16 @@
 #include "ape_pool.h"
 #include "ape_array.h"
 #include "ape_extend.h"
-#include <sys/time.h>
-#include <sys/resource.h>
+#include "ape_ssl.h"
 
-
-//gcc -g *.c ../modules/*.c -I../core/ -I../../deps/ -I/usr/include/ ../../deps/c-ares/.libs/libcares.a ../../deps/confuse-2.7/src/.libs/libconfuse.a ../../deps/jsapi/src/libjs_static.a -lrt -lstdc++
+//gcc -g *.c ../modules/*.c -I../core/ -I../../deps/ -I../../deps/mozilla/js/src/dist/include -I/usr/include/ ../../deps/c-ares/.libs/libcares.a ../../deps/confuse-2.7/src/.libs/libconfuse.a ../../deps/mozilla/js/src/libjs_static.a -lrt -lstdc++
 
 int ape_running = 0;
-/*ape_module_t *ape_modules[] = {
+ape_module_t *ape_modules[] = {
 	//&ape_inotify_module,
-	&ape_jsapi_module,
+	NULL,
 	NULL
-};*/
+};
 
 
 static void signal_handler(int sign)
@@ -72,7 +72,9 @@ static ape_global *ape_init()
 
     ape->basemem    = APE_BASEMEM;
     ape->is_running = 1;
-
+	
+	ape_ssl_init();
+	
     if (ape_dns_init(ape) != 0) {
         goto error;
     }
@@ -87,7 +89,7 @@ static ape_global *ape_init()
     }
 
     ape->extend = ape_array_new(8);
-
+	
     return ape;
 
 error:

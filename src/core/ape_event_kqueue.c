@@ -8,6 +8,7 @@
 
 #include <string.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 #ifdef USE_KQUEUE_HANDLER
 static int event_kqueue_add(struct _fdevent *ev, int fd, int bitadd, void *attach)
@@ -104,6 +105,7 @@ int event_kqueue_reload(struct _fdevent *ev)
 	if ((ev->kq_fd = kqueue()) == -1) {
 		return 0;
 	}
+	return 1;
 }
 
 int event_kqueue_init(struct _fdevent *ev)

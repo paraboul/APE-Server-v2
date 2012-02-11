@@ -28,5 +28,6 @@ int get_first_timer_ms(ape_global *ape);
 void timers_free(ape_global *ape);
 
 #define add_ticked(x, y) add_periodical(VTICKS_RATE, 0, x, y, ape)
+#define ape_dispatch_async(callback, params) add_timeout(1, callback, params, ape)
 
 #endif

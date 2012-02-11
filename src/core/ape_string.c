@@ -16,6 +16,7 @@ string *string_new(const char *str, size_t len, string_encoding encoding)
 
             break;
     }
+	return NULL;
 }
 
 void string_update_len(string *str)

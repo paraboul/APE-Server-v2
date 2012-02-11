@@ -80,7 +80,7 @@ inline int events_poll(struct _fdevent *ev, int timeout_ms);
 
 int event_kqueue_init(struct _fdevent *ev);
 int event_epoll_init(struct _fdevent *ev);
-
+int events_revent(struct _fdevent *ev, int i);
 #endif
 
 // vim: ts=4 sts=4 sw=4 et

@@ -9,55 +9,15 @@
 #include "ape_array.h"
 #include "ape_transports.h"
 
+#define SSL_
 
 #define APE_CLIENT(socket) ((ape_client *)socket->_ctx)
-
-typedef enum {
-    WS_STEP_KEY,
-    WS_STEP_START,
-    WS_STEP_LENGTH,
-    WS_STEP_SHORT_LENGTH,
-    WS_STEP_EXTENDED_LENGTH,
-    WS_STEP_DATA,
-    WS_STEP_END
-} ws_payload_step;
-
-typedef struct _websocket_state
-{
-	unsigned char *data;
-	void (*on_frame)(struct _ape_client *, const char *, ssize_t, ape_global *);
-	
-	unsigned int offset;
-	unsigned short int error;
-	//ws_version version;
-    
-	struct {
-	    /* cypher key */
-	    unsigned char val[4];
-	    int pos;
-	} key;
-    
-    #pragma pack(2)
-	struct {
-	    unsigned char start;
-	    unsigned char length; /* 7 bit length */
-	    union {
-	        unsigned short short_length; /* 16 bit length */
-	        unsigned long long int extended_length; /* 64 bit length */
-	    };
-	} frame_payload;
-	#pragma pack()
-	ws_payload_step step;
-	int data_pos;
-	int data_inkey;
-	int frame_pos;
-} websocket_state;
 
 typedef struct _ape_client {
     char ip[16];
     ape_socket *socket;
     ape_socket *server;
-    websocket_state *ws_state;
+    struct _websocket_state *ws_state;
 
     struct {
         http_parser parser;
@@ -92,7 +52,7 @@ typedef struct _ape_server_conf {
 } ape_server_conf_t;
 
 ape_server *ape_server_init(uint16_t port, const char *local_ip,
-        ape_global *ape);
+        char *cert, ape_global *ape);
 
 #endif
 

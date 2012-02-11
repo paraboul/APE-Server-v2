@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2010  Anthony Catel <a.catel@weelya.com>
+  Copyright (C) 2012  Anthony Catel <a.catel@weelya.com>
 
   This file is part of APE Server.
   APE is free software; you can redistribute it and/or modify
@@ -22,6 +22,7 @@
 #include "ape_socket.h"
 #include "ape_dns.h"
 #include "ape_timers.h"
+#include "ape_ssl.h"
 
 #include <stdio.h>
 #include <sys/time.h>
@@ -35,6 +36,8 @@
 //#include <sys/sendfile.h>
 #include <limits.h>
 #include <string.h>
+	  
+#include <openssl/err.h>
 
 /*
 Use only one syscall (ioctl) if FIONBIO is defined
@@ -55,9 +58,20 @@ static inline int setnonblocking(int fd)
 static ape_socket_jobs_t *ape_socket_new_jobs_queue(size_t n);
 static ape_socket_jobs_t *ape_socket_job_get_slot(ape_socket *socket, int type);
 static ape_pool_list_t *ape_socket_new_packet_queue(size_t n);
-static int ape_socket_queue_data(ape_socket *socket, char *data, size_t len,
-        int offset);
+static int ape_socket_queue_data(ape_socket *socket, char *data, size_t len, int offset, ape_socket_data_autorelease data_type);
 static void ape_init_job_list(ape_pool_list_t *list, size_t n);
+
+inline static void ape_socket_release_data(char *data, ape_socket_data_autorelease data_type)
+{
+	switch (data_type) {
+		case APE_DATA_AUTORELEASE:
+		case APE_DATA_COPY:
+			free(data);
+			break;
+		default:
+			break;
+	}
+}
 
 ape_socket *APE_socket_new(uint8_t pt, int from)
 {
@@ -96,7 +110,8 @@ ape_socket *APE_socket_new(uint8_t pt, int from)
     ret->states.state   = APE_SOCKET_ST_PENDING;
     ret->states.proto   = pt;
     ret->ctx            = NULL;
-
+	ret->SSL.issecure   = (pt == APE_SOCKET_PT_SSL);
+	ret->SSL.ssl	    = NULL;
 
     ret->callbacks.on_read          = NULL;
     ret->callbacks.on_disconnect    = NULL;
@@ -133,7 +148,8 @@ int APE_socket_listen(ape_socket *socket, uint16_t port,
     if (bind(socket->s.fd,
                 (struct sockaddr *)&addr, sizeof(struct sockaddr)) == -1 ||
                 /* only listen for STREAM socket */
-                (socket->states.proto == APE_SOCKET_PT_TCP &&
+                ((socket->states.proto == APE_SOCKET_PT_TCP ||
+					socket->states.proto == APE_SOCKET_PT_SSL) &&
                 listen(socket->s.fd, APE_SOCKET_BACKLOG) == -1)) {
 
         close(socket->s.fd);
@@ -273,30 +289,41 @@ int APE_sendfile(ape_socket *socket, const char *file)
     return 1;
 }
 
-int APE_socket_write(ape_socket *socket, char *data, size_t len)
+int APE_socket_write(ape_socket *socket, unsigned char *data,
+	size_t len, ape_socket_data_autorelease data_type)
 {
     ssize_t t_bytes = 0, r_bytes = len, n = 0;
+	
+	if (data_type == APE_DATA_COPY && len > 0) {
+		char *data_copy = malloc(len);
+		memcpy(data_copy, data, len);
+		data = data_copy;
+	}
 
     if (socket->states.state != APE_SOCKET_ST_ONLINE ||
             len == 0) {
+				
+		ape_socket_release_data(data, data_type);
         return -1;
     }
 
     if (socket->states.flags & APE_SOCKET_WOULD_BLOCK ||
             socket->jobs.head->flags & APE_SOCKET_JOB_ACTIVE) {
-        ape_socket_queue_data(socket, data, len, 0);
+        ape_socket_queue_data(socket, data, len, 0, data_type);
 
-        return -1;
+        return len;
     }
 
     while (t_bytes < len) {
         if ((n = write(socket->s.fd, data + t_bytes, r_bytes)) < 0) {
+			printf("Socket failure?\n");
             if (errno == EAGAIN && r_bytes != 0) {
                 socket->states.flags |= APE_SOCKET_WOULD_BLOCK;
-                ape_socket_queue_data(socket, data, len, t_bytes);
+                ape_socket_queue_data(socket, data, len, t_bytes, data_type);
 				printf("Not finished\n");
                 return r_bytes;
             } else {
+				ape_socket_release_data(data, data_type);
                 return -1;
             }
         }
@@ -304,6 +331,7 @@ int APE_socket_write(ape_socket *socket, char *data, size_t len)
         t_bytes += n;
         r_bytes -= n;
     }
+	ape_socket_release_data(data, data_type);
     /* TODO : free data ? */
 
     return 0;
@@ -312,6 +340,9 @@ int APE_socket_write(ape_socket *socket, char *data, size_t len)
 void ape_socket_free(ape_socket *socket)
 {
 	printf("Socket collected\n");
+	if (socket->SSL.issecure) {
+		ape_ssl_destroy(socket->SSL.ssl);
+	}
 	free(socket);
 }
 
@@ -325,7 +356,9 @@ int APE_socket_destroy(ape_socket *socket, ape_global *ape)
 
     ape_destroy_pool(socket->jobs.head);
 
-	add_timeout(1, ape_socket_free, socket, ape);
+	ape_dispatch_async(ape_socket_free, socket);
+
+	return 0;
 }
 
 int ape_socket_do_jobs(ape_socket *socket)
@@ -368,12 +401,13 @@ int ape_socket_do_jobs(ape_socket *socket)
                 packet = (ape_socket_packet_t *)packet->pool.next;
 
             }
-
+			/* TODO: loop until EAGAIN? */
             n = writev(socket->s.fd, chunks, i);
             /* ERR */
+			/* TODO : Handle this */
             if (n == -1) {
         		printf("Err in writev %s\n", strerror(errno));
-                job = (ape_socket_jobs_t *)job->next;
+                job = (ape_socket_jobs_t *)job->next; /* useless? */
                 return 0;
             }
             packet = (ape_socket_packet_t *)plist->head;
@@ -383,11 +417,11 @@ int ape_socket_do_jobs(ape_socket *socket)
 
                 /* packet not finished */
                 if (n < 0) {
+					printf("Packet not finished\n");
                     packet->offset = packet->len + n;
                     break;
                 }
-
-                free(packet->pool.ptr.data);
+				ape_socket_release_data(packet->pool.ptr.data, packet->data_type);
                 packet->pool.ptr.data = NULL;
 
                 packet = (ape_socket_packet_t *)ape_pool_head_to_queue(plist);
@@ -451,7 +485,7 @@ int ape_socket_do_jobs(ape_socket *socket)
 }
 
 static int ape_socket_queue_data(ape_socket *socket,
-        char *data, size_t len, int offset)
+        char *data, size_t len, int offset, ape_socket_data_autorelease data_type)
 {
     ape_socket_jobs_t *job;
     ape_socket_packet_t *packets;
@@ -467,8 +501,9 @@ static int ape_socket_queue_data(ape_socket *socket,
     packets = (ape_socket_packet_t *)list->current;
 
     packets->pool.ptr.data = data;
-    packets->len    = len;
-    packets->offset = offset;
+    packets->len       = len;
+    packets->offset    = offset;
+	packets->data_type = data_type;
 
     /* Always have spare slots */
     if (packets->pool.next == NULL) {
@@ -480,11 +515,12 @@ static int ape_socket_queue_data(ape_socket *socket,
     return 0;
 }
 
-
+#if 0
 static int ape_socket_queue_buffer(ape_socket *socket, buffer *b)
 {
     return ape_socket_queue_data(socket, b->data, b->used, 0);
 }
+#endif
 
 inline void ape_socket_connected(ape_socket *socket, ape_global *ape)
 {
@@ -506,6 +542,7 @@ inline int ape_socket_accept(ape_socket *socket, ape_global *ape)
 
         if (fd == -1) {
             if (errno == EINTR) continue;
+			/* TODO : case ECONNABORTED */
             break;
         }
 
@@ -516,6 +553,11 @@ inline int ape_socket_accept(ape_socket *socket, ape_global *ape)
 
         client->states.state = APE_SOCKET_ST_ONLINE;
         client->states.type  = APE_SOCKET_TP_CLIENT;
+		
+		if (APE_SOCKET_ISSECURE(socket)) {
+			printf("Got a ssl client\n");
+			client->SSL.ssl = ape_ssl_init_con(socket->SSL.ssl, client->s.fd);
+		}
 
         events_add(client->s.fd, client, EVENT_READ|EVENT_WRITE, ape);
 
@@ -531,15 +573,55 @@ inline int ape_socket_accept(ape_socket *socket, ape_global *ape)
 inline int ape_socket_read(ape_socket *socket, ape_global *ape)
 {
     ssize_t nread;
+	ERR_clear_error();
+	
     do {
         /* TODO : avoid extra calling (avoid realloc) */
         buffer_prepare(&socket->data_in, 2048);
-        nread = read(socket->s.fd,
-            socket->data_in.data + socket->data_in.used,
-            socket->data_in.size - socket->data_in.used);
+		
+		if (APE_SOCKET_ISSECURE(socket)) {
+			printf("Pending : %d\n", SSL_pending(socket->SSL.ssl->con));
+			nread = ape_ssl_read(socket->SSL.ssl,
+				socket->data_in.data + socket->data_in.used, 
+				socket->data_in.size - socket->data_in.used);
+			printf("Secure reading? %d\n", nread);
+			if (nread < 0) {
+				unsigned long err = SSL_get_error(socket->SSL.ssl->con, nread);
+				switch(err) {
+					case SSL_ERROR_ZERO_RETURN:
+					printf("Err : ZERO\n");
+						break;
+					case SSL_ERROR_WANT_WRITE:
+					printf("Err : WRITE\n");
+						break;
+					case SSL_ERROR_WANT_READ:
+					printf("Err : READ\n");
+						break;
+					case SSL_ERROR_WANT_CONNECT:
+					printf("Err : CONNECT\n");
+						break;
+					case SSL_ERROR_WANT_ACCEPT:
+					printf("Err : ACCEPT\n");
+						break;
+					case SSL_ERROR_SYSCALL:
+						printf("Err: SYS\n");
+						break;
+					case SSL_ERROR_NONE:
+						printf("No error?\n");
+						break;
+					default:
+						printf("WTF : %d\n", err);
+						break;
+				}
+			}
+		} else {
+		
+	        nread = read(socket->s.fd,
+	            socket->data_in.data + socket->data_in.used,
+	            socket->data_in.size - socket->data_in.used);
 
-        socket->data_in.used += ape_max(nread, 0);
-
+	        socket->data_in.used += ape_max(nread, 0);
+		}
     } while (nread > 0);
 
     if (socket->data_in.used != 0) {
