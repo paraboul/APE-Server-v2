@@ -76,6 +76,7 @@ enum ape_socket_state {
 
 typedef enum _ape_socket_data_autorelease {
 	APE_DATA_STATIC,
+	APE_DATA_GLOBAL_STATIC,
 	APE_DATA_AUTORELEASE,
 	APE_DATA_OWN,
 	APE_DATA_COPY

@@ -171,12 +171,12 @@ void ape_ws_process_frame(ape_socket *socket_client, ape_global *ape)
                             //    sendbin(co->fd, payload_head, 2, 1, g_ape);
                                 return;
                             }
-                            PACK_TCP(co->fd);
+                            //PACK_TCP(co->fd);
                           //  sendbin(co->fd, payload_head, 2, 0, g_ape);
                             if (body_length) {
                                 //sendbin(co->fd, websocket->data, body_length, 0, g_ape);
                             }
-                            FLUSH_TCP(co->fd);
+                            //FLUSH_TCP(co->fd);
                             break;
                         }
                         case 0xA: /* Never called as long as we never ask for pong */

@@ -2,6 +2,8 @@
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 
+#define CIPHER_LIST "AES128-SHA"
+
 void ape_ssl_init()
 {
 	SSL_library_init();            
@@ -9,7 +11,12 @@ void ape_ssl_init()
 	OpenSSL_add_all_algorithms();
 }
 
-ape_ssl_t *ape_ssl_init_ctx()
+static void ape_ssl_info_callback(const SSL *s, int where, int ret)
+{
+
+}
+
+ape_ssl_t *ape_ssl_init_ctx(const char *cert)
 {
 	ape_ssl_t *ssl = NULL;
 	SSL_CTX *ctx = SSL_CTX_new(SSLv23_method());
@@ -22,24 +29,38 @@ ape_ssl_t *ape_ssl_init_ctx()
 	ssl = malloc(sizeof(*ssl));
 	ssl->ctx = ctx;
 	ssl->con = NULL;
-
+	SSL_CTX_set_info_callback(ssl->ctx, ape_ssl_info_callback);
     SSL_CTX_set_options(ssl->ctx, SSL_OP_ALL);
 	SSL_CTX_set_default_read_ahead(ssl->ctx, 1);
 	//SSL_CTX_set_read_ahead(ssl->ctx, 1);
 	
-	if (SSL_CTX_use_certificate_chain_file(ssl->ctx, "/Users/anthonycatel/ape2/APE-Server-v2/etc/self.pem") == 0) {
+	if (SSL_CTX_set_cipher_list(ssl->ctx, CIPHER_LIST) <= 0) {
+		printf("Failed to set cipher\n");
+		SSL_CTX_free(ctx);
+		free(ssl);
+		return NULL;
+	}
+	
+	if (SSL_CTX_use_certificate_chain_file(ssl->ctx, cert) == 0) {
 		printf("Failed to load cert\n");
 		SSL_CTX_free(ctx);
 		free(ssl);
 		return NULL;
 	}
-	if (SSL_CTX_use_PrivateKey_file(ssl->ctx, "/Users/anthonycatel/ape2/APE-Server-v2/etc/self.pem", SSL_FILETYPE_PEM) == 0) {
+	if (SSL_CTX_use_PrivateKey_file(ssl->ctx, cert, SSL_FILETYPE_PEM) == 0) {
 		printf("Failed to load private key\n");
 		SSL_CTX_free(ctx);
 		free(ssl);
 		return NULL;		
 	}
 	
+    if (SSL_CTX_check_private_key(ssl->ctx) == 0) {
+		printf("Private key does not match the certificate public key\n");
+		SSL_CTX_free(ctx);
+		free(ssl);
+		return NULL;
+    }
+		
 	printf("[SSL] New context\n");
 
 	return ssl;
@@ -63,6 +84,8 @@ ape_ssl_t *ape_ssl_init_con(ape_ssl_t *parent, int fd)
 		return NULL;
 	}
 	
+	//SSL_accept(con);
+	
 	ssl = malloc(sizeof(*ssl));
 	ssl->ctx = NULL;
 	ssl->con = con;
@@ -75,6 +98,11 @@ ape_ssl_t *ape_ssl_init_con(ape_ssl_t *parent, int fd)
 int ape_ssl_read(ape_ssl_t *ssl, void *buf, int num)
 {
 	return SSL_read(ssl->con, buf, num);
+}
+
+int ape_ssl_write(ape_ssl_t *ssl, void *buf, int num)
+{
+	return SSL_write(ssl->con, buf, num);
 }
 
 void ape_ssl_destroy(ape_ssl_t *ssl)

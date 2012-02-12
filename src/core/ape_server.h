@@ -9,7 +9,6 @@
 #include "ape_array.h"
 #include "ape_transports.h"
 
-#define SSL_
 
 #define APE_CLIENT(socket) ((ape_client *)socket->_ctx)
 
@@ -51,8 +50,7 @@ typedef struct _ape_server_conf {
 
 } ape_server_conf_t;
 
-ape_server *ape_server_init(uint16_t port, const char *local_ip,
-        char *cert, ape_global *ape);
+ape_server *ape_server_init(ape_cfg_server_t *conf, ape_global *ape);
 
 #endif
 

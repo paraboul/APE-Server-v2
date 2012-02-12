@@ -5,6 +5,7 @@
 #define _GNU_SOURCE
 #include <string.h>
 
+
 static void ape_config_error(cfg_t *cfg, const char *fmt, va_list ap);
 
 int ape_config_server_setup(cfg_t *conf, ape_server *server)
@@ -28,7 +29,7 @@ cfg_t *ape_read_config(const char *file, ape_global *ape)
 
     cfg_opt_t ssl_opts[] =
     {
-        CFG_STR("cert", 0, CFGF_NODEFAULT),
+        CFG_STR("cert_path", 0, CFGF_NODEFAULT),
 		CFG_BOOL("enable", cfg_false, CFGF_NODEFAULT),
         CFG_END()
     };
@@ -61,37 +62,45 @@ cfg_t *ape_read_config(const char *file, ape_global *ape)
 
     for (i = 0; i < cfg_size(cfg, "server"); i++) {
         ape_server *aserver;
-        char *sep, ip[16];
-        uint16_t port;
+        ape_cfg_server_t *conf = malloc(sizeof(*conf));
+        
+        char *sep;
         struct in_addr addr4;
+        cfg_t *ssl;
+        
+        conf->SSL.enabled = 0;
+        conf->SSL.cert_path = NULL;
 
         server = cfg_getnsec(cfg, "server", i);
+        ssl    = cfg_getsec(server, "ssl");
 
         ipport = strdup(cfg_title(server));
 
-        sep = strchr(ipport, ':');
-        *sep = '\0';
+        sep = strchr(ipport, ':'); *sep = '\0';
 
         if (sep == ipport) {
-            strcpy(ip, "0.0.0.0");
+            strcpy(conf->ip, "0.0.0.0");
         } else if (inet_pton(AF_INET, ipport, &addr4) == 1) {
-            strncpy(ip, ipport, 16);
+            strncpy(conf->ip, ipport, 16);
         } else {
             goto error;
         }
 
-        port = atoi(&sep[1]);
-        if (port == 0) {
+        conf->port = atoi(&sep[1]);
+        
+        if ((conf->SSL.enabled = cfg_getbool(ssl, "enable"))) {
+            conf->SSL.cert_path = strdup(cfg_getstr(ssl, "cert_path"));
+        }
+        
+        if (conf->port == 0) {
             goto error;
         }
 
         *sep = ':';
-        
-        //printf("Dir : %s\n", cfg_getstr(server, "serverroot"));
 
         if ((aserver = (ape_server *)ape_array_lookup(srvlst, ipport,
                                             strlen(ipport))) != NULL ||
-                        (aserver = ape_server_init(port, ip, "/Users/anthonycatel/ape2/APE-Server-v2/etc/self.pem", ape)) != NULL) {
+                        (aserver = ape_server_init(conf, ape)) != NULL) {
 
             ape_array_add_ptrn(srvlst, ipport, strlen(ipport), aserver);
             

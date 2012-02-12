@@ -47,6 +47,8 @@ void events_loop(ape_global *ape)
                         }
                     }
                 } else if (APE_SOCKET(attach)->states.type == APE_SOCKET_TP_CLIENT) {
+                
+                    printf("Got an event\n");
 
                     if (bitev & EVENT_WRITE) {
                         APE_SOCKET(attach)->states.flags &= ~APE_SOCKET_WOULD_BLOCK;

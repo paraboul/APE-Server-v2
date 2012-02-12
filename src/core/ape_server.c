@@ -198,12 +198,20 @@ static int ape_server_http_ready(ape_client *client, ape_global *ape)
     case APE_TRANSPORT_FT:
     {
         char fullpath[4096];
+		char fill[20480*51];
+		
+		memset(fill, 'a', 20480*51);
 
         APE_EVENT(request, client, ape);
 		
 		printf("Got a request\n");
-		APE_socket_write(client->socket, CONST_STR_LEN("HTTP/1.1 418 I'm a teapot\n\n"), APE_DATA_STATIC);
+		
+		
+		APE_socket_write(client->socket, CONST_STR_LEN("HTTP/1.1 200 OK\n\n"), APE_DATA_STATIC);
 		APE_socket_write(client->socket, CONST_STR_LEN("<h1>Ho heil :)</h1>\n\n"), APE_DATA_STATIC);
+		APE_socket_write(client->socket, fill, 20480*51, APE_DATA_STATIC);
+
+		//#endif
 		APE_socket_shutdown(client->socket);
         
 		//printf("Requested : %s\n", client->http.path->data);
@@ -231,19 +239,15 @@ static int ape_server_http_ready(ape_client *client, ape_global *ape)
 static void ape_server_on_read(ape_socket *socket_client, ape_global *ape)
 {
     int i;
-	printf("Read on socket %.2x\n", socket_client->data_in.data[0]);
     /* TODO : implement duff device here (speedup !)*/
     for (i = 0; i < socket_client->data_in.used; i++) {
-		printf("%.2x\n", socket_client->data_in.data[i]);
-		#if 0
+
         if (!parse_http_char(&APE_CLIENT(socket_client)->http.parser,
                 socket_client->data_in.data[i])) {
-					printf("\n");
 					printf("Failed %c\n", socket_client->data_in.data[i]);
             shutdown(socket_client->s.fd, 2);
             break;
         }
-		#endif
     }
 }
 
@@ -287,12 +291,19 @@ static void ape_server_on_disconnect(ape_socket *socket_client, ape_global *ape)
 
 } /* ape_socket object is released after this call */
 
-ape_server *ape_server_init(uint16_t port, const char *local_ip, char *cert, ape_global *ape)
+ape_server *ape_server_init(ape_cfg_server_t *conf, ape_global *ape)
 {
     ape_socket *socket;
     ape_server *server;
+    
+    uint16_t port;
+    char *local_ip, *cert;
+    
+    port = conf->port;
+    local_ip = conf->ip;
+    cert = conf->SSL.cert_path;
 
-    if ((socket = APE_socket_new((cert != NULL ? APE_SOCKET_PT_SSL : APE_SOCKET_PT_TCP), 0)) == NULL ||
+    if ((socket = APE_socket_new((cert != NULL && conf->SSL.enabled ? APE_SOCKET_PT_SSL : APE_SOCKET_PT_TCP), 0)) == NULL ||
         APE_socket_listen(socket, port, local_ip, ape) != 0) {
 
         printf("[Server] Failed to initialize %s:%d\n", local_ip, port);
@@ -316,11 +327,16 @@ ape_server *ape_server_init(uint16_t port, const char *local_ip, char *cert, ape
     socket->callbacks.on_disconnect = ape_server_on_disconnect;
     socket->_ctx                    = server; /* link the socket to the server struct */
 	
-	if (socket->SSL.issecure) {
-		socket->SSL.ssl = ape_ssl_init_ctx();
+	if (APE_SOCKET_ISSECURE(socket)) {
+		if ((socket->SSL.ssl = ape_ssl_init_ctx(cert)) == NULL) {
+		    APE_socket_destroy(socket, ape);
+		    printf("[Server] Failed to start %s:%d (Failed to init SSL)\n", server->ip, server->port);
+		    free(server);
+		    return NULL;
+		}
 	}
 
-    printf("[Server] Starting %s:%d\n", server->ip, server->port);
+    printf("[Server] Starting %s:%d %s\n", server->ip, server->port, (APE_SOCKET_ISSECURE(socket) ? "[SSL server]" : ""));
 
     return server;
 }

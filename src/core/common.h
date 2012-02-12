@@ -1,8 +1,6 @@
 #ifndef _APE_COMMON_H_
 #define _APE_COMMON_H_
 
-#include "config.h"
-
 #include <stdio.h>
 #include <c-ares/ares.h>
 
