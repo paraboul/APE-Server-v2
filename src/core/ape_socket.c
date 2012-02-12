@@ -36,7 +36,7 @@
 //#include <sys/sendfile.h>
 #include <limits.h>
 #include <string.h>
-	  
+      
 #include <openssl/err.h>
 
 /*
@@ -63,14 +63,14 @@ static void ape_init_job_list(ape_pool_list_t *list, size_t n);
 
 inline static void ape_socket_release_data(char *data, ape_socket_data_autorelease data_type)
 {
-	switch (data_type) {
-		case APE_DATA_AUTORELEASE:
-		case APE_DATA_COPY:
-			free(data);
-			break;
-		default:
-			break;
-	}
+    switch (data_type) {
+        case APE_DATA_AUTORELEASE:
+        case APE_DATA_COPY:
+            free(data);
+            break;
+        default:
+            break;
+    }
 }
 
 ape_socket *APE_socket_new(uint8_t pt, int from)
@@ -110,8 +110,8 @@ ape_socket *APE_socket_new(uint8_t pt, int from)
     ret->states.state   = APE_SOCKET_ST_PENDING;
     ret->states.proto   = pt;
     ret->ctx            = NULL;
-	ret->SSL.issecure   = (pt == APE_SOCKET_PT_SSL);
-	ret->SSL.ssl	    = NULL;
+    ret->SSL.issecure   = (pt == APE_SOCKET_PT_SSL);
+    ret->SSL.ssl        = NULL;
 
     ret->callbacks.on_read          = NULL;
     ret->callbacks.on_disconnect    = NULL;
@@ -149,7 +149,7 @@ int APE_socket_listen(ape_socket *socket, uint16_t port,
                 (struct sockaddr *)&addr, sizeof(struct sockaddr)) == -1 ||
                 /* only listen for STREAM socket */
                 ((socket->states.proto == APE_SOCKET_PT_TCP ||
-					socket->states.proto == APE_SOCKET_PT_SSL) &&
+                    socket->states.proto == APE_SOCKET_PT_SSL) &&
                 listen(socket->s.fd, APE_SOCKET_BACKLOG) == -1)) {
 
         close(socket->s.fd);
@@ -160,10 +160,10 @@ int APE_socket_listen(ape_socket *socket, uint16_t port,
     setsockopt(socket->s.fd, IPPROTO_TCP, TCP_DEFER_ACCEPT, &timeout,
             sizeof(int));
 #elif SO_ACCEPTFILTER
-	{
-		accept_filter_arg afa = {"dataready", ""};
-		setsockopt(socket->s.fd, SOL_SOCKET, SO_ACCEPTFILTER, &afa, sizeof(afa));
-	}
+    {
+        accept_filter_arg afa = {"dataready", ""};
+        setsockopt(socket->s.fd, SOL_SOCKET, SO_ACCEPTFILTER, &afa, sizeof(afa));
+    }
 #endif
     socket->states.type = APE_SOCKET_TP_SERVER;
     socket->states.state = APE_SOCKET_ST_ONLINE;
@@ -225,18 +225,18 @@ int APE_socket_connect(ape_socket *socket, uint16_t port,
 
 void APE_socket_shutdown(ape_socket *socket)
 {
-	printf("Ask for shutdown\n");
+    printf("Ask for shutdown\n");
     if (socket->states.state != APE_SOCKET_ST_ONLINE) {
-		printf("Not online\n");
+        printf("Not online\n");
         return;
     }
     if (socket->states.flags & APE_SOCKET_WOULD_BLOCK ||
             socket->jobs.head->flags & APE_SOCKET_JOB_ACTIVE) {
         ape_socket_job_get_slot(socket, APE_SOCKET_JOB_SHUTDOWN);
-		printf("Pushed to queue\n");
+        printf("Pushed to queue\n");
         return;
     }
-	printf("Shutdown!\n");
+    printf("Shutdown!\n");
     shutdown(socket->s.fd, 2);
 }
 
@@ -244,10 +244,10 @@ int APE_sendfile(ape_socket *socket, const char *file)
 {
     int fd;
     ape_socket_jobs_t *job;
-	off_t offset_file = 0, nwrite = 0;
+    off_t offset_file = 0, nwrite = 0;
 
     if ((fd = open(file, O_RDONLY)) == -1) {
-		printf("Failed to open %s\n", file);
+        printf("Failed to open %s\n", file);
         return 0;
     }
 
@@ -261,28 +261,28 @@ int APE_sendfile(ape_socket *socket, const char *file)
         return 1;
     }
 #if (defined(__APPLE__) || defined(__FREEBSD__))
-	nwrite = 4096;
-	while (sendfile(fd, socket->s.fd, offset_file, &nwrite, NULL, 0) == 0 && nwrite != 0) {
-		offset_file += nwrite;
-		nwrite = 4096;
-	}
-	
-	if (nwrite != 0) {
-		nwrite = -1;
-	}
+    nwrite = 4096;
+    while (sendfile(fd, socket->s.fd, offset_file, &nwrite, NULL, 0) == 0 && nwrite != 0) {
+        offset_file += nwrite;
+        nwrite = 4096;
+    }
+    
+    if (nwrite != 0) {
+        nwrite = -1;
+    }
 #else
     do {
-		nwrite = sendfile(socket->s.fd, fd, NULL, 4096);
+        nwrite = sendfile(socket->s.fd, fd, NULL, 4096);
     } while (nwrite > 0);
 #endif
     if (nwrite == -1 && errno == EAGAIN) {
         socket->states.flags  |= APE_SOCKET_WOULD_BLOCK;
         job          = ape_socket_job_get_slot(socket, APE_SOCKET_JOB_SENDFILE);
         job->ptr.fd  = fd;
-		/* BSD/OSX require offset */
-		job->offset  = offset_file;
+        /* BSD/OSX require offset */
+        job->offset  = offset_file;
     } else {
-		printf("File sent...\n");
+        printf("File sent...\n");
         close(fd);
     }
     
@@ -290,7 +290,7 @@ int APE_sendfile(ape_socket *socket, const char *file)
 }
 
 int APE_socket_write(ape_socket *socket, unsigned char *data,
-	size_t len, ape_socket_data_autorelease data_type)
+    size_t len, ape_socket_data_autorelease data_type)
 {
     ssize_t t_bytes = 0, r_bytes = len, n = 0;
 
@@ -298,8 +298,8 @@ int APE_socket_write(ape_socket *socket, unsigned char *data,
     if (socket->states.state != APE_SOCKET_ST_ONLINE ||
             len == 0) {
 
-		ape_socket_release_data(data,
-		    (data_type == APE_DATA_COPY ? APE_DATA_OWN : data_type);
+        ape_socket_release_data(data,
+            (data_type == APE_DATA_COPY ? APE_DATA_OWN : data_type);
         return -1;
     }
 
@@ -309,45 +309,45 @@ int APE_socket_write(ape_socket *socket, unsigned char *data,
         printf("Would block %d\n", len);
         return len;
     }
-	if (APE_SOCKET_ISSECURE(socket)) {
-		int w;
-		printf("Want write on a secure connection\n");
-		w = ape_ssl_write(socket->SSL.ssl, data, r_bytes);
-		printf("Write %d bytes out of %d\n", w, r_bytes);
-	} else {
-	    while (t_bytes < len) {
-	        if ((n = write(socket->s.fd, data + t_bytes, r_bytes)) < 0) {
-				printf("Socket failure?\n");
-	            if (errno == EAGAIN && r_bytes != 0) {
-	                socket->states.flags |= APE_SOCKET_WOULD_BLOCK;
-	                ape_socket_queue_data(socket, data, len, t_bytes, data_type);
-					printf("Not finished\n");
-	                return r_bytes;
-	            } else {
-					ape_socket_release_data(data, 
-					    (data_type == APE_DATA_COPY ? APE_DATA_OWN : data_type));
-	                return -1;
-	            }
-	        }
+    if (APE_SOCKET_ISSECURE(socket)) {
+        int w;
+        printf("Want write on a secure connection\n");
+        w = ape_ssl_write(socket->SSL.ssl, data, r_bytes);
+        printf("Write %d bytes out of %d\n", w, r_bytes);
+    } else {
+        while (t_bytes < len) {
+            if ((n = write(socket->s.fd, data + t_bytes, r_bytes)) < 0) {
+                printf("Socket failure?\n");
+                if (errno == EAGAIN && r_bytes != 0) {
+                    socket->states.flags |= APE_SOCKET_WOULD_BLOCK;
+                    ape_socket_queue_data(socket, data, len, t_bytes, data_type);
+                    printf("Not finished\n");
+                    return r_bytes;
+                } else {
+                    ape_socket_release_data(data, 
+                        (data_type == APE_DATA_COPY ? APE_DATA_OWN : data_type));
+                    return -1;
+                }
+            }
             printf("Write %d out of %d\n", n, len);
-	        t_bytes += n;
-	        r_bytes -= n;
-	    }
-	}
-	
-	ape_socket_release_data(data,
-	    (data_type == APE_DATA_COPY ? APE_DATA_OWN : data_type));
+            t_bytes += n;
+            r_bytes -= n;
+        }
+    }
+    
+    ape_socket_release_data(data,
+        (data_type == APE_DATA_COPY ? APE_DATA_OWN : data_type));
 
     return 0;
 }
 
 void ape_socket_free(ape_socket *socket)
 {
-	printf("Socket collected\n");
-	if (socket->SSL.issecure) {
-		ape_ssl_destroy(socket->SSL.ssl);
-	}
-	free(socket);
+    printf("Socket collected\n");
+    if (socket->SSL.issecure) {
+        ape_ssl_destroy(socket->SSL.ssl);
+    }
+    free(socket);
 }
 
 int APE_socket_destroy(ape_socket *socket, ape_global *ape)
@@ -360,9 +360,9 @@ int APE_socket_destroy(ape_socket *socket, ape_global *ape)
 
     ape_destroy_pool(socket->jobs.head);
 
-	ape_dispatch_async(ape_socket_free, socket);
+    ape_dispatch_async(ape_socket_free, socket);
 
-	return 0;
+    return 0;
 }
 
 int ape_socket_do_jobs(ape_socket *socket)
@@ -405,12 +405,12 @@ int ape_socket_do_jobs(ape_socket *socket)
                 packet = (ape_socket_packet_t *)packet->pool.next;
 
             }
-			/* TODO: loop until EAGAIN? */
+            /* TODO: loop until EAGAIN? */
             n = writev(socket->s.fd, chunks, i);
             /* ERR */
-			/* TODO : Handle this */
+            /* TODO : Handle this */
             if (n == -1) {
-        		printf("Err in writev %s\n", strerror(errno));
+                printf("Err in writev %s\n", strerror(errno));
                 job = (ape_socket_jobs_t *)job->next; /* useless? */
                 return 0;
             }
@@ -421,11 +421,11 @@ int ape_socket_do_jobs(ape_socket *socket)
 
                 /* packet not finished */
                 if (n < 0) {
-					printf("Packet not finished\n");
+                    printf("Packet not finished\n");
                     packet->offset = packet->len + n;
                     break;
                 }
-				ape_socket_release_data(packet->pool.ptr.data, packet->data_type);
+                ape_socket_release_data(packet->pool.ptr.data, packet->data_type);
                 packet->pool.ptr.data = NULL;
 
                 packet = (ape_socket_packet_t *)ape_pool_head_to_queue(plist);
@@ -447,13 +447,13 @@ int ape_socket_do_jobs(ape_socket *socket)
         {
             off_t nwrite = 4096;
 #if (defined(__APPLE__) || defined(__FREEBSD__))
-			while (sendfile(job->ptr.fd, socket->s.fd, job->offset, &nwrite, NULL, 0) == 0 && nwrite != 0) {
-				job->offset += nwrite;
-				nwrite = 4096;
-			}
-			if (nwrite != 0) {
-				nwrite = -1;
-			}
+            while (sendfile(job->ptr.fd, socket->s.fd, job->offset, &nwrite, NULL, 0) == 0 && nwrite != 0) {
+                job->offset += nwrite;
+                nwrite = 4096;
+            }
+            if (nwrite != 0) {
+                nwrite = -1;
+            }
 #else
             do {
                 nwrite = sendfile(socket->s.fd, job->ptr.fd, NULL, 4096);
@@ -466,8 +466,8 @@ int ape_socket_do_jobs(ape_socket *socket)
             }
             /* Job finished */
             close(job->ptr.fd);
-			job->offset = 0;
-			
+            job->offset = 0;
+            
             break;
         }
 
@@ -499,9 +499,9 @@ static int ape_socket_queue_data(ape_socket *socket,
     data_type = (data_type == APE_DATA_STATIC ? APE_DATA_COPY : data_type);
     
     if (data_type == APE_DATA_COPY) {
-		char *data_copy = malloc(len);
-		memcpy(data_copy, data, len);
-		data = data_copy;
+        char *data_copy = malloc(len);
+        memcpy(data_copy, data, len);
+        data = data_copy;
     }
 
     job = ape_socket_job_get_slot(socket, APE_SOCKET_JOB_WRITEV);
@@ -516,7 +516,7 @@ static int ape_socket_queue_data(ape_socket *socket,
     packets->pool.ptr.data = data;
     packets->len       = len;
     packets->offset    = offset;
-	packets->data_type = data_type;
+    packets->data_type = data_type;
 
     /* Always have spare slots */
     if (packets->pool.next == NULL) {
@@ -555,7 +555,7 @@ inline int ape_socket_accept(ape_socket *socket, ape_global *ape)
 
         if (fd == -1) {
             if (errno == EINTR) continue;
-			/* TODO : case ECONNABORTED */
+            /* TODO : case ECONNABORTED */
             break;
         }
 
@@ -566,11 +566,11 @@ inline int ape_socket_accept(ape_socket *socket, ape_global *ape)
 
         client->states.state = APE_SOCKET_ST_ONLINE;
         client->states.type  = APE_SOCKET_TP_CLIENT;
-		
-		if (APE_SOCKET_ISSECURE(socket)) {
-			printf("Got a ssl client\n");
-			client->SSL.ssl = ape_ssl_init_con(socket->SSL.ssl, client->s.fd);
-		}
+        
+        if (APE_SOCKET_ISSECURE(socket)) {
+            printf("Got a ssl client\n");
+            client->SSL.ssl = ape_ssl_init_con(socket->SSL.ssl, client->s.fd);
+        }
 
         events_add(client->s.fd, client, EVENT_READ|EVENT_WRITE, ape);
 
@@ -586,47 +586,47 @@ inline int ape_socket_accept(ape_socket *socket, ape_global *ape)
 inline int ape_socket_read(ape_socket *socket, ape_global *ape)
 {
     ssize_t nread;
-	ERR_clear_error();
+    ERR_clear_error();
     do {
         /* TODO : avoid extra calling (avoid realloc) */
         buffer_prepare(&socket->data_in, 2048);
-		
-		if (APE_SOCKET_ISSECURE(socket)) {
-			
-			nread = ape_ssl_read(socket->SSL.ssl,
-				socket->data_in.data + socket->data_in.used, 
-				socket->data_in.size - socket->data_in.used);
+        
+        if (APE_SOCKET_ISSECURE(socket)) {
+            
+            nread = ape_ssl_read(socket->SSL.ssl,
+                socket->data_in.data + socket->data_in.used, 
+                socket->data_in.size - socket->data_in.used);
 
-			if (nread < 0) {
-				unsigned long err = SSL_get_error(socket->SSL.ssl->con, nread);
-				printf("Err : %d\n", err);
-				switch(err) {
-					case SSL_ERROR_NONE:
-					case SSL_ERROR_ZERO_RETURN:
-						break;
-					case SSL_ERROR_WANT_WRITE:
-					    printf("Want write\n");
-						break;
-					case SSL_ERROR_WANT_READ:
-					    printf("want read %d\n", SSL_pending(socket->SSL.ssl->con));
-						break;
-					case SSL_ERROR_WANT_CONNECT:
-					case SSL_ERROR_WANT_ACCEPT:
-					case SSL_ERROR_SYSCALL:
-					default:
-						nread = 0;
-						break;
-				}
-			}
-			socket->data_in.used += ape_max(nread, 0);
-		} else {
-		
-	        nread = read(socket->s.fd,
-	            socket->data_in.data + socket->data_in.used,
-	            socket->data_in.size - socket->data_in.used);
+            if (nread < 0) {
+                unsigned long err = SSL_get_error(socket->SSL.ssl->con, nread);
+                printf("Err : %d\n", err);
+                switch(err) {
+                    case SSL_ERROR_NONE:
+                    case SSL_ERROR_ZERO_RETURN:
+                        break;
+                    case SSL_ERROR_WANT_WRITE:
+                        printf("Want write\n");
+                        break;
+                    case SSL_ERROR_WANT_READ:
+                        printf("want read %d\n", SSL_pending(socket->SSL.ssl->con));
+                        break;
+                    case SSL_ERROR_WANT_CONNECT:
+                    case SSL_ERROR_WANT_ACCEPT:
+                    case SSL_ERROR_SYSCALL:
+                    default:
+                        nread = 0;
+                        break;
+                }
+            }
+            socket->data_in.used += ape_max(nread, 0);
+        } else {
+        
+            nread = read(socket->s.fd,
+                socket->data_in.data + socket->data_in.used,
+                socket->data_in.size - socket->data_in.used);
 
-	        socket->data_in.used += ape_max(nread, 0);
-		}
+            socket->data_in.used += ape_max(nread, 0);
+        }
     } while (nread > 0);
 
     if (socket->data_in.used != 0) {
