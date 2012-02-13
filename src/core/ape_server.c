@@ -198,18 +198,22 @@ static int ape_server_http_ready(ape_client *client, ape_global *ape)
     case APE_TRANSPORT_FT:
     {
         char fullpath[4096];
-		char fill[20480*51];
+		char fill[20480];
+		char fillb[20480];
 		
-		memset(fill, 'a', 20480*51);
+		memset(fill, 'a', 20480);
+		memset(fillb, 'b', 20480);
 
         APE_EVENT(request, client, ape);
 		
 		printf("Got a request\n");
 		
-		
 		APE_socket_write(client->socket, CONST_STR_LEN("HTTP/1.1 200 OK\n\n"), APE_DATA_STATIC);
 		APE_socket_write(client->socket, CONST_STR_LEN("<h1>Ho heil :)</h1>\n\n"), APE_DATA_STATIC);
-		APE_socket_write(client->socket, fill, 20480*51, APE_DATA_STATIC);
+		
+		APE_socket_write(client->socket, fill, 20480, APE_DATA_STATIC);
+		APE_socket_write(client->socket, fill, 20480, APE_DATA_STATIC);
+		APE_socket_write(client->socket, fillb, 20480, APE_DATA_STATIC);
 
 		//#endif
 		APE_socket_shutdown(client->socket);

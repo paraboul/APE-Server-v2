@@ -52,7 +52,7 @@
 
 enum ape_socket_flags {
     APE_SOCKET_WOULD_BLOCK  = (1 << 0),
-    APE_SOCKET_CORK     = (1 << 1)
+    APE_SOCKET_CORK         = (1 << 1)
 };
 
 enum ape_socket_proto {

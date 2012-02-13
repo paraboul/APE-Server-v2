@@ -49,24 +49,25 @@ void events_loop(ape_global *ape)
                 } else if (APE_SOCKET(attach)->states.type == APE_SOCKET_TP_CLIENT) {
                 
                     printf("Got an event\n");
-
+                    
+                    /* unset this before READ event because read can invoke writes */
                     if (bitev & EVENT_WRITE) {
                         APE_SOCKET(attach)->states.flags &= ~APE_SOCKET_WOULD_BLOCK;
                     }
 
                     if (bitev & EVENT_READ &&
                         ape_socket_read(APE_SOCKET(attach), ape) == -1) {
-
-                        continue; /* ape_socket is free'ed */
+                        
+                        /* ape_socket is planned to be release after the for block */
+                        continue;
                     }
 
                     if (bitev & EVENT_WRITE) {
                         if (APE_SOCKET(attach)->states.state == APE_SOCKET_ST_ONLINE &&
                                 !(APE_SOCKET(attach)->states.flags & APE_SOCKET_WOULD_BLOCK)) {
 
-                            //printf("[Socket] %d is writable\n", APE_SOCKET(attach)->s.fd);
                             ape_socket_do_jobs(APE_SOCKET(attach));
-                            //printf("[Socket] Rdy to send %i\n", APE_SOCKET(attach)->s.fd);
+                            
                         } else if (APE_SOCKET(attach)->states.state == APE_SOCKET_ST_PROGRESS) {
                             int serror = 0, ret;
                             socklen_t serror_len = sizeof(serror);

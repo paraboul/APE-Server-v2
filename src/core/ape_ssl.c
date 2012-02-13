@@ -32,6 +32,11 @@ ape_ssl_t *ape_ssl_init_ctx(const char *cert)
 	SSL_CTX_set_info_callback(ssl->ctx, ape_ssl_info_callback);
     SSL_CTX_set_options(ssl->ctx, SSL_OP_ALL);
 	SSL_CTX_set_default_read_ahead(ssl->ctx, 1);
+	
+	/*see APE_socket_write() ape_socket.c */
+	SSL_CTX_set_mode(ssl->ctx, SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER);
+	
+	/* TODO: what for? */
 	//SSL_CTX_set_read_ahead(ssl->ctx, 1);
 	
 	if (SSL_CTX_set_cipher_list(ssl->ctx, CIPHER_LIST) <= 0) {
