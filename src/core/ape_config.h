@@ -14,6 +14,7 @@ typedef struct _ape_cfg_server {
     struct {
         int enabled;
         char *cert_path;
+        char *key_path;
     } SSL;
     
     char *root;

@@ -32,6 +32,8 @@
 #define APE_SOCKET(attach) ((ape_socket *)attach)
 #define APE_SOCKET_ISSECURE(socket) socket->SSL.issecure
 
+/* TODO: TCP_NOPUSH  */
+
 #ifdef TCP_CORK
     #define PACK_TCP(fd) \
     do { \
@@ -120,6 +122,7 @@ struct _ape_socket {
 
     void *ctx;  /* public pointer */
     void *_ctx; /* internal public pointer */
+    ape_global *ape;
 
     ape_socket_callbacks    callbacks;
 
@@ -149,24 +152,25 @@ struct _ape_socket_packet {
 } typedef ape_socket_packet_t;
 
 
-ape_socket *APE_socket_new(uint8_t pt, int from);
+ape_socket *APE_socket_new(uint8_t pt, int from, ape_global *ape);
 
 int APE_socket_listen(ape_socket *socket, uint16_t port,
-        const char *local_ip, ape_global *ape);
+        const char *local_ip);
 int APE_socket_connect(ape_socket *socket, uint16_t port,
-        const char *remote_ip_host, ape_global *ape);
+        const char *remote_ip_host);
 int APE_socket_write(ape_socket *socket, unsigned char *data,
 	size_t len, ape_socket_data_autorelease data_type);
-int APE_socket_destroy(ape_socket *socket, ape_global *ape);
+int APE_socket_destroy(ape_socket *socket);
 void APE_socket_shutdown(ape_socket *socket);
 int APE_sendfile(ape_socket *socket, const char *file);
 int ape_socket_do_jobs(ape_socket *socket);
-inline int ape_socket_accept(ape_socket *socket, ape_global *ape);
-inline int ape_socket_read(ape_socket *socket, ape_global *ape);
-inline void ape_socket_connected(ape_socket *socket, ape_global *ape);
-int ape_socket_write_file(ape_socket *socket, const char *file,
-        ape_global *ape);
+inline int ape_socket_accept(ape_socket *socket);
+inline int ape_socket_read(ape_socket *socket);
+inline void ape_socket_connected(ape_socket *socket);
 
+/*int ape_socket_write_file(ape_socket *socket, const char *file,
+        ape_global *ape);
+*/
 #endif
 
 // vim: ts=4 sts=4 sw=4 et

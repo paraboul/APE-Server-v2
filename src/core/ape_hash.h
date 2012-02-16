@@ -42,6 +42,9 @@ typedef struct _ape_htable_item
 	
 } ape_htable_item_t;
 
+uint64_t ape_rand_64();
+char *ape_rand_64_base64();
+
 ape_htable_t *hashtbl_init();
 
 void hashtbl_free(ape_htable_t *htbl);

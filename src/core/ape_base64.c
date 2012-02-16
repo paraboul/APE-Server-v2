@@ -43,7 +43,7 @@ char *base64_encode(unsigned char * src, int len)
 	unsigned i_bits = 0;
 	int i_shift = 0;
 	int bytes_remaining = len;
-	
+
 	ret = dst = malloc(len * 4 / 3 + 12);
 
 	if (len) {

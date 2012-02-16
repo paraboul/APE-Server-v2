@@ -31,7 +31,7 @@ void events_loop(ape_global *ape)
             bitev   = events_revent(&ape->events, i);
 			//if (attach == NULL) printf("Will failed\n");
             fd  = ((ape_fds *)attach)->fd; /* assuming that ape_fds is the first member */
-			printf("Getting : %d on %d %d\n", i, fd, bitev);
+			//printf("Getting : %d on %d %d\n", i, fd, bitev);
 			//if ((ape_fds *)attach)->state == ()
             switch(((ape_fds *)attach)->type) {
 
@@ -41,14 +41,13 @@ void events_loop(ape_global *ape)
                         if (APE_SOCKET(attach)->states.proto == APE_SOCKET_PT_TCP ||
 							APE_SOCKET(attach)->states.proto == APE_SOCKET_PT_SSL) {
 								
-                            ape_socket_accept(APE_SOCKET(attach), ape);
+                            ape_socket_accept(APE_SOCKET(attach));
                         } else {
                             printf("read on UDP\n");
                         }
                     }
                 } else if (APE_SOCKET(attach)->states.type == APE_SOCKET_TP_CLIENT) {
-                
-                    printf("Got an event\n");
+
                     
                     /* unset this before READ event because read can invoke writes */
                     if (bitev & EVENT_WRITE) {
@@ -56,7 +55,7 @@ void events_loop(ape_global *ape)
                     }
 
                     if (bitev & EVENT_READ &&
-                        ape_socket_read(APE_SOCKET(attach), ape) == -1) {
+                        ape_socket_read(APE_SOCKET(attach)) == -1) {
                         
                         /* ape_socket is planned to be release after the for block */
                         continue;
@@ -77,7 +76,7 @@ void events_loop(ape_global *ape)
 
                                 APE_SOCKET(attach)->states.state = APE_SOCKET_ST_ONLINE;
 
-                                ape_socket_connected(APE_SOCKET(attach), ape);
+                                ape_socket_connected(APE_SOCKET(attach));
                                 
                             } else {
                                 printf("Failed to connect\n");

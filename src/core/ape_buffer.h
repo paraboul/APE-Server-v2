@@ -26,8 +26,6 @@ void buffer_append_string_n(buffer *b, const char *string, size_t length);
 buffer *buffer_to_buffer_utf8(buffer *b);
 buffer *buffer_utf8_to_buffer(buffer *b);
 
-#define CONST_STR_LEN(x) x, x ? sizeof(x) - 1 : 0
-
 #endif
 
 // vim: ts=4 sts=4 sw=4 et

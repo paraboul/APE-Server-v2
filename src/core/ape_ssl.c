@@ -2,7 +2,7 @@
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 
-#define CIPHER_LIST "AES128-SHA"
+#define CIPHER_LIST "HIGH:!ADH:!MD5"
 
 void ape_ssl_init()
 {
@@ -16,7 +16,7 @@ static void ape_ssl_info_callback(const SSL *s, int where, int ret)
 
 }
 
-ape_ssl_t *ape_ssl_init_ctx(const char *cert)
+ape_ssl_t *ape_ssl_init_ctx(const char *cert, const char *key)
 {
 	ape_ssl_t *ssl = NULL;
 	SSL_CTX *ctx = SSL_CTX_new(SSLv23_method());
@@ -33,7 +33,7 @@ ape_ssl_t *ape_ssl_init_ctx(const char *cert)
     SSL_CTX_set_options(ssl->ctx, SSL_OP_ALL);
 	SSL_CTX_set_default_read_ahead(ssl->ctx, 1);
 	
-	/*see APE_socket_write() ape_socket.c */
+	/* see APE_socket_write() ape_socket.c */
 	SSL_CTX_set_mode(ssl->ctx, SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER);
 	
 	/* TODO: what for? */
@@ -52,7 +52,7 @@ ape_ssl_t *ape_ssl_init_ctx(const char *cert)
 		free(ssl);
 		return NULL;
 	}
-	if (SSL_CTX_use_PrivateKey_file(ssl->ctx, cert, SSL_FILETYPE_PEM) == 0) {
+	if (SSL_CTX_use_PrivateKey_file(ssl->ctx, (key != NULL ? key : cert), SSL_FILETYPE_PEM) == 0) {
 		printf("Failed to load private key\n");
 		SSL_CTX_free(ctx);
 		free(ssl);
@@ -108,6 +108,11 @@ int ape_ssl_read(ape_ssl_t *ssl, void *buf, int num)
 int ape_ssl_write(ape_ssl_t *ssl, void *buf, int num)
 {
 	return SSL_write(ssl->con, buf, num);
+}
+
+void ape_ssl_shutdown(ape_ssl_t *ssl)
+{
+    SSL_shutdown(ssl->con);
 }
 
 void ape_ssl_destroy(ape_ssl_t *ssl)

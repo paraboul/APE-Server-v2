@@ -9,6 +9,8 @@
 
 #include <string.h>
 
+int _co_event = 0, _disco_event = 0;
+
 static int ape_server_http_ready(ape_client *client, ape_global *ape);
 
 static struct _ape_transports_s {
@@ -138,7 +140,6 @@ static int ape_http_callback(void **ctx, callback_type type,
     case HTTP_HEADER_END:
         break;
     case HTTP_READY:
-	printf("HTTP ready\n");
         ape_server_http_ready(client, ape);
         break;
     default:
@@ -163,13 +164,13 @@ static int ape_server_http_ready(ape_client *client, ape_global *ape)
     if (host != NULL) {
         /* /!\ the buffer is non null terminated */
     }
-	if (upgrade && strncmp(upgrade->data, CONST_STR_LEN(" websocket")) == 0) {
+	if (upgrade && strncmp(upgrade->data, " websocket", sizeof(" websocket") - 1) == 0) {
 		char *ws_computed_key;
 		const buffer *ws_key = REQUEST_HEADER("Sec-WebSocket-Key");
 		printf("Key : %s\n", &ws_key->data[1]);
 		if (ws_key) {
 			ws_computed_key = ape_ws_compute_key(&ws_key->data[1], ws_key->used-1);
-			APE_socket_write(client->socket, CONST_STR_LEN(WEBSOCKET_HARDCODED_HEADERS),APE_DATA_STATIC);
+			APE_socket_write(client->socket, CONST_STR_LEN(WEBSOCKET_HARDCODED_HEADERS), APE_DATA_STATIC);
 			APE_socket_write(client->socket, CONST_STR_LEN("Sec-WebSocket-Accept: "), APE_DATA_STATIC);
 			APE_socket_write(client->socket, ws_computed_key, strlen(ws_computed_key), APE_DATA_STATIC);
 			APE_socket_write(client->socket, CONST_STR_LEN("\r\nSec-WebSocket-Origin: 127.0.0.1\r\n\r\n"), APE_DATA_STATIC);
@@ -205,16 +206,14 @@ static int ape_server_http_ready(ape_client *client, ape_global *ape)
 		memset(fillb, 'b', 20480);
 
         APE_EVENT(request, client, ape);
-		
-		printf("Got a request\n");
-		
+
 		APE_socket_write(client->socket, CONST_STR_LEN("HTTP/1.1 200 OK\n\n"), APE_DATA_STATIC);
 		APE_socket_write(client->socket, CONST_STR_LEN("<h1>Ho heil :)</h1>\n\n"), APE_DATA_STATIC);
 		
-		APE_socket_write(client->socket, fill, 20480, APE_DATA_STATIC);
+		/*APE_socket_write(client->socket, fill, 20480, APE_DATA_STATIC);
 		APE_socket_write(client->socket, fill, 20480, APE_DATA_STATIC);
 		APE_socket_write(client->socket, fillb, 20480, APE_DATA_STATIC);
-
+    */
 		//#endif
 		APE_socket_shutdown(client->socket);
         
@@ -278,7 +277,9 @@ static void ape_server_on_connect(ape_socket *socket_server, ape_socket *socket_
 	client->ws_state			 = NULL;
 
     client->json.parser = NULL;
-
+    
+    _co_event++;
+    
 }
 
 static void ape_server_on_disconnect(ape_socket *socket_client, ape_global *ape)
@@ -290,7 +291,9 @@ static void ape_server_on_disconnect(ape_socket *socket_client, ape_global *ape)
     /* TODO clean headers */
 
     free(socket_client->_ctx); /* release the ape_client object */
-
+    
+    _disco_event++;
+    
     //printf("Client has disconnected\n");
 
 } /* ape_socket object is released after this call */
@@ -301,17 +304,19 @@ ape_server *ape_server_init(ape_cfg_server_t *conf, ape_global *ape)
     ape_server *server;
     
     uint16_t port;
-    char *local_ip, *cert;
+    char *local_ip, *cert, *key;
     
     port = conf->port;
     local_ip = conf->ip;
     cert = conf->SSL.cert_path;
+    key  = conf->SSL.key_path;
 
-    if ((socket = APE_socket_new((cert != NULL && conf->SSL.enabled ? APE_SOCKET_PT_SSL : APE_SOCKET_PT_TCP), 0)) == NULL ||
-        APE_socket_listen(socket, port, local_ip, ape) != 0) {
+    if ((socket = APE_socket_new((cert != NULL &&
+        conf->SSL.enabled ? APE_SOCKET_PT_SSL : APE_SOCKET_PT_TCP), 0, ape)) == NULL ||
+        APE_socket_listen(socket, port, local_ip) != 0) {
 
         printf("[Server] Failed to initialize %s:%d\n", local_ip, port);
-        APE_socket_destroy(socket, ape);
+        APE_socket_destroy(socket);
         return NULL;
     }
 
@@ -332,8 +337,8 @@ ape_server *ape_server_init(ape_cfg_server_t *conf, ape_global *ape)
     socket->_ctx                    = server; /* link the socket to the server struct */
 	
 	if (APE_SOCKET_ISSECURE(socket)) {
-		if ((socket->SSL.ssl = ape_ssl_init_ctx(cert)) == NULL) {
-		    APE_socket_destroy(socket, ape);
+		if ((socket->SSL.ssl = ape_ssl_init_ctx(cert, key)) == NULL) {
+		    APE_socket_destroy(socket);
 		    printf("[Server] Failed to start %s:%d (Failed to init SSL)\n", server->ip, server->port);
 		    free(server);
 		    return NULL;

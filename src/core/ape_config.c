@@ -30,6 +30,7 @@ cfg_t *ape_read_config(const char *file, ape_global *ape)
     cfg_opt_t ssl_opts[] =
     {
         CFG_STR("cert_path", 0, CFGF_NODEFAULT),
+        CFG_STR("key_path", 0, CFGF_NODEFAULT),
 		CFG_BOOL("enable", cfg_false, CFGF_NODEFAULT),
         CFG_END()
     };
@@ -70,6 +71,7 @@ cfg_t *ape_read_config(const char *file, ape_global *ape)
         
         conf->SSL.enabled = 0;
         conf->SSL.cert_path = NULL;
+        conf->SSL.key_path = NULL;
 
         server = cfg_getnsec(cfg, "server", i);
         ssl    = cfg_getsec(server, "ssl");
@@ -90,6 +92,7 @@ cfg_t *ape_read_config(const char *file, ape_global *ape)
         
         if ((conf->SSL.enabled = cfg_getbool(ssl, "enable"))) {
             conf->SSL.cert_path = strdup(cfg_getstr(ssl, "cert_path"));
+            conf->SSL.key_path = strdup(cfg_getstr(ssl, "key_path"));
         }
         
         if (conf->port == 0) {

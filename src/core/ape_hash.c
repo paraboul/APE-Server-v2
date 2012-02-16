@@ -24,11 +24,41 @@
 
 #include "common.h"
 #include "ape_hash.h"
+#include "ape_base64.h"
+
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 
 uint32_t ape_hash_str(const void *key, int len)
 {
     return MurmurHash2(key, len, _ape_seed) % HACH_TABLE_MAX;
+}
+
+uint64_t ape_rand_64()
+{
+    int random;
+    uint64_t ret = 0;
+    
+    random = open("/dev/urandom", O_RDONLY);
+    
+    if (!random) {
+        printf("Cannot open /dev/urandom\n");
+        return 0;
+    }
+    
+    read(random, &ret, 8);
+    close(random);
+    
+    return ret;
+}
+
+char *ape_rand_64_base64()
+{
+    uint64_t ret = ape_rand_64();
+    
+    return base64_encode((unsigned char *)&ret, sizeof(uint64_t));
 }
 
 #if 0

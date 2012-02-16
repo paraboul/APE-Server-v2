@@ -25,6 +25,8 @@
 //gcc -g *.c ../modules/*.c -I../core/ -I../../deps/ -I../../deps/mozilla/js/src/dist/include -I/usr/include/ ../../deps/c-ares/.libs/libcares.a ../../deps/confuse-2.7/src/.libs/libconfuse.a ../../deps/mozilla/js/src/libjs_static.a -lrt -lstdc++
 
 int ape_running = 0;
+extern int _nco, _ndec, _co_event, _disco_event;
+
 ape_module_t *ape_modules[] = {
 	//&ape_inotify_module,
 	NULL,
@@ -36,6 +38,11 @@ static void signal_handler(int sign)
 {
 	ape_running = 0;
 	printf("[Quit] Shutting down...\n");
+	printf("New : %d\n", _nco-2);
+	printf("Dest : %d\n\n", _ndec);
+	
+	printf("Co event : %d\n", _co_event);
+	printf("Disco event : %d\n", _disco_event);
 }
 
 static int inc_rlimit(int nofile)
@@ -72,6 +79,8 @@ static ape_global *ape_init()
 
     ape->basemem    = APE_BASEMEM;
     ape->is_running = 1;
+    ape->timers.ntimers = 0;
+    ape->timers.timers  = NULL;
 	
 	ape_ssl_init();
 	
@@ -83,6 +92,8 @@ static ape_global *ape_init()
     ape->seed = _ape_seed = time(NULL) ^ (getpid() << 16);
 
     ape->hashs.servers = hashtbl_init();
+    ape->hashs.pipes.pub   = hashtbl_init();
+    ape->hashs.pipes.priv   = hashtbl_init();
 
     if ((ape->conf = ape_read_config("../../etc/ape.conf", ape)) == NULL) {
         goto error;
@@ -152,6 +163,9 @@ int main(int argc, char **argv)
     ape_add_property(ape->extend, "foo", ape);
 
     printf("Get addr %p\n", ape_get_property(ape->extend, "foo", 3));*/
+    
+    printf("rand : %llu\n", ape_rand_64());
+    
     ape_running = 1;
     events_loop(ape);
     

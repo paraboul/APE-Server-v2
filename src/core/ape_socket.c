@@ -55,6 +55,8 @@ static inline int setnonblocking(int fd)
 #define setnonblocking(fd) fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK)
 #endif
 
+int _nco = 0, _ndec = 0;
+
 static ape_socket_jobs_t *ape_socket_new_jobs_queue(size_t n);
 static ape_socket_jobs_t *ape_socket_job_get_slot(ape_socket *socket, int type);
 static ape_pool_list_t *ape_socket_new_packet_queue(size_t n);
@@ -74,12 +76,12 @@ inline static void ape_socket_release_data(char *data, ape_socket_data_autorelea
     }
 }
 
-ape_socket *APE_socket_new(uint8_t pt, int from)
+ape_socket *APE_socket_new(uint8_t pt, int from, ape_global *ape)
 {
     int sock = from, proto = SOCK_STREAM;
 
     ape_socket *ret = NULL;
-
+    _nco++;
 #ifdef __WIN32
     WORD wVersionRequested;
     WSADATA wsaData;
@@ -104,6 +106,7 @@ ape_socket *APE_socket_new(uint8_t pt, int from)
     }
 
     ret             = malloc(sizeof(*ret));
+    ret->ape        = ape;
     ret->s.fd       = sock;
     ret->s.type     = APE_SOCKET;
     ret->states.flags   = 0;
@@ -124,12 +127,14 @@ ape_socket *APE_socket_new(uint8_t pt, int from)
     buffer_init(&ret->data_in);
 
     ape_init_job_list(&ret->jobs, 2);
+    
+    //printf("New socket : %d\n", sock);
 
     return ret;
 }
 
 int APE_socket_listen(ape_socket *socket, uint16_t port,
-        const char *local_ip, ape_global *ape)
+        const char *local_ip)
 {
     struct sockaddr_in addr;
     int reuse_addr = 1;
@@ -169,7 +174,7 @@ int APE_socket_listen(ape_socket *socket, uint16_t port,
     socket->states.type = APE_SOCKET_TP_SERVER;
     socket->states.state = APE_SOCKET_ST_ONLINE;
 
-    events_add(socket->s.fd, socket, EVENT_READ|EVENT_WRITE, ape);
+    events_add(socket->s.fd, socket, EVENT_READ|EVENT_WRITE, socket->ape);
 
     return 0;
 
@@ -182,7 +187,7 @@ static int ape_socket_connect_ready_to_connect(const char *remote_ip,
     struct sockaddr_in addr;
 
     if (status != ARES_SUCCESS) {
-        APE_socket_destroy(socket, ape);
+        APE_socket_destroy(socket);
         return -1;
     }
 
@@ -195,7 +200,7 @@ static int ape_socket_connect_ready_to_connect(const char *remote_ip,
                 sizeof(struct sockaddr)) == 0 ||
             errno != EINPROGRESS) {
 
-        APE_socket_destroy(socket, ape);
+        APE_socket_destroy(socket);
         printf("not ready to connect\n");
         return -1;
     }
@@ -203,30 +208,30 @@ static int ape_socket_connect_ready_to_connect(const char *remote_ip,
     socket->states.type = APE_SOCKET_TP_CLIENT;
     socket->states.state = APE_SOCKET_ST_PROGRESS;
 
-    events_add(socket->s.fd, socket, EVENT_READ|EVENT_WRITE, ape);
+    events_add(socket->s.fd, socket, EVENT_READ|EVENT_WRITE, socket->ape);
 
     return 0;
 
 }
 
 int APE_socket_connect(ape_socket *socket, uint16_t port,
-        const char *remote_ip_host, ape_global *ape)
+        const char *remote_ip_host)
 {
     if (port == 0) {
-        APE_socket_destroy(socket, ape);
+        APE_socket_destroy(socket);
         return -1;
     }
 
     socket->remote_port = port;
     ape_gethostbyname(remote_ip_host, ape_socket_connect_ready_to_connect,
-            socket, ape);
+            socket, socket->ape);
 
     return 0;
 }
 
 void APE_socket_shutdown(ape_socket *socket)
 {
-    printf("Ask for shutdown\n");
+    //printf("Ask for shutdown\n");
     if (socket->states.state != APE_SOCKET_ST_ONLINE) {
         return;
     }
@@ -236,8 +241,14 @@ void APE_socket_shutdown(ape_socket *socket)
         printf("Shutdown pushed to queue\n");
         return;
     }
-    printf("Shutdown!\n");
-    shutdown(socket->s.fd, 2);
+    
+    if (APE_SOCKET_ISSECURE(socket)) {
+        ape_ssl_shutdown(socket->SSL.ssl);
+    }
+    
+    if (shutdown(socket->s.fd, 2) != 0) {
+        APE_socket_destroy(socket);
+    }
 }
 
 static void ape_socket_shutdown_force(ape_socket *socket)
@@ -246,7 +257,52 @@ static void ape_socket_shutdown_force(ape_socket *socket)
         return;
     }
     
-    shutdown(socket->s.fd, 2);
+    if (APE_SOCKET_ISSECURE(socket)) {
+        ape_ssl_shutdown(socket->SSL.ssl);
+    }
+    
+    if (shutdown(socket->s.fd, 2) != 0) {
+        printf("== FAILED to shutdown ==\n");
+        APE_socket_destroy(socket);
+    }
+}
+
+static void ape_socket_free(ape_socket *socket)
+{
+    _ndec++;
+    //printf("Socket collected %d\n", socket->s.fd);
+    if (socket->SSL.issecure) {
+        ape_ssl_destroy(socket->SSL.ssl);
+    }
+    free(socket);
+}
+
+int APE_socket_destroy(ape_socket *socket)
+{
+
+    if (socket == NULL || socket->states.state == APE_SOCKET_ST_OFFLINE)
+        return -1;
+    
+    ape_global *ape = socket->ape;
+    
+    if (socket->callbacks.on_disconnect != NULL) {
+        socket->callbacks.on_disconnect(socket, ape);
+    }
+        
+    //printf("====== Destroy : %d ======\n", socket->s.fd);
+    close(socket->s.fd);
+
+    buffer_delete(&socket->data_in);
+
+    socket->states.state = APE_SOCKET_ST_OFFLINE;
+
+    ape_destroy_pool(socket->jobs.head);
+
+    ape_dispatch_async(ape_socket_free, socket);
+    
+    /* TODO: Free any pending job !!! */
+
+    return 0;
 }
 
 int APE_sendfile(ape_socket *socket, const char *file)
@@ -320,7 +376,7 @@ int APE_socket_write(ape_socket *socket, unsigned char *data,
     }
     if (APE_SOCKET_ISSECURE(socket)) {
         int w;
-        printf("Want write on a secure connection\n");
+        //printf("Want write on a secure connection\n");
         
         ERR_clear_error();
         
@@ -351,7 +407,7 @@ int APE_socket_write(ape_socket *socket, unsigned char *data,
                         break;
                 }        
         }
-        printf("Write %d bytes out of %d\n", w, r_bytes);
+        
     } else {
         while (t_bytes < len) {
             if ((n = write(socket->s.fd, data + t_bytes, r_bytes)) < 0) {
@@ -366,7 +422,7 @@ int APE_socket_write(ape_socket *socket, unsigned char *data,
                     break;
                 }
             }
-            printf("Write %d out of %d\n", n, len);
+            
             t_bytes += n;
             r_bytes -= n;
         }
@@ -383,31 +439,7 @@ int APE_socket_write(ape_socket *socket, unsigned char *data,
     return 0;
 }
 
-void ape_socket_free(ape_socket *socket)
-{
-    printf("Socket collected\n");
-    if (socket->SSL.issecure) {
-        ape_ssl_destroy(socket->SSL.ssl);
-    }
-    free(socket);
-}
 
-int APE_socket_destroy(ape_socket *socket, ape_global *ape)
-{
-    close(socket->s.fd);
-
-    buffer_delete(&socket->data_in);
-
-    socket->states.state = APE_SOCKET_ST_OFFLINE;
-
-    ape_destroy_pool(socket->jobs.head);
-
-    ape_dispatch_async(ape_socket_free, socket);
-    
-    /* TODO: Free any pending job !!! */
-
-    return 0;
-}
 
 
 int ape_socket_do_jobs(ape_socket *socket)
@@ -444,8 +476,7 @@ int ape_socket_do_jobs(ape_socket *socket)
                 ERR_clear_error();
                 
                 while (packet != NULL && packet->pool.ptr.data != NULL) {
-                    
-                    printf("Replay SSL frame\n");
+
                     if ((n = ape_ssl_write(socket->SSL.ssl,
                                 packet->pool.ptr.data, packet->len)) == -1) {
                     
@@ -547,8 +578,13 @@ int ape_socket_do_jobs(ape_socket *socket)
         }
 
         case APE_SOCKET_JOB_SHUTDOWN:
-            shutdown(socket->s.fd, 2);
-            /* nothing to do after a shutdown */
+            if (APE_SOCKET_ISSECURE(socket)) {
+                ape_ssl_shutdown(socket->SSL.ssl);
+            }
+            if (shutdown(socket->s.fd, 2) != 0) {
+                APE_socket_destroy(socket);
+            }
+            
             return 0;
         default:
             break;
@@ -610,14 +646,14 @@ static int ape_socket_queue_buffer(ape_socket *socket, buffer *b)
 }
 #endif
 
-inline void ape_socket_connected(ape_socket *socket, ape_global *ape)
+inline void ape_socket_connected(ape_socket *socket)
 {
     if (socket->callbacks.on_connected != NULL) {
-        socket->callbacks.on_connected(socket, ape);
+        socket->callbacks.on_connected(socket, socket->ape);
     }
 }
 
-inline int ape_socket_accept(ape_socket *socket, ape_global *ape)
+inline int ape_socket_accept(ape_socket *socket)
 {
     int fd, sin_size = sizeof(struct sockaddr_in);
     struct sockaddr_in their_addr;
@@ -634,7 +670,7 @@ inline int ape_socket_accept(ape_socket *socket, ape_global *ape)
             break;
         }
 
-        client = APE_socket_new(socket->states.proto, fd);
+        client = APE_socket_new(socket->states.proto, fd, socket->ape);
 
         /* clients inherits server callbacks */
         client->callbacks    = socket->callbacks;
@@ -647,10 +683,10 @@ inline int ape_socket_accept(ape_socket *socket, ape_global *ape)
             client->SSL.ssl = ape_ssl_init_con(socket->SSL.ssl, client->s.fd);
         }
 
-        events_add(client->s.fd, client, EVENT_READ|EVENT_WRITE, ape);
+        events_add(client->s.fd, client, EVENT_READ|EVENT_WRITE, socket->ape);
 
         if (socket->callbacks.on_connect != NULL) {
-            socket->callbacks.on_connect(socket, client, ape);
+            socket->callbacks.on_connect(socket, client, socket->ape);
         }
     }
 
@@ -658,7 +694,7 @@ inline int ape_socket_accept(ape_socket *socket, ape_global *ape)
 }
 
 /* Consume socket buffer */
-inline int ape_socket_read(ape_socket *socket, ape_global *ape)
+inline int ape_socket_read(ape_socket *socket)
 {
     ssize_t nread;
     
@@ -684,9 +720,10 @@ inline int ape_socket_read(ape_socket *socket, ape_global *ape)
                         printf("Want write\n");
                         break;
                     case SSL_ERROR_WANT_READ:
-                        printf("want read %d\n", SSL_pending(socket->SSL.ssl->con));
+                        //printf("want read %d\n", SSL_pending(socket->SSL.ssl->con));
                         break;
                     default:
+                        printf("Force shutdown %d\n", socket->s.fd);
                         ape_socket_shutdown_force(socket);
                         return 0;
                 }
@@ -705,17 +742,14 @@ inline int ape_socket_read(ape_socket *socket, ape_global *ape)
     if (socket->data_in.used != 0) {
         //buffer_append_char(&socket->data_in, '\0');
         if (socket->callbacks.on_read != NULL) {
-            socket->callbacks.on_read(socket, ape);
+            socket->callbacks.on_read(socket, socket->ape);
         }
 
         socket->data_in.used = 0;
     }
     if (nread == 0) {
-        if (socket->callbacks.on_disconnect != NULL) {
-            socket->callbacks.on_disconnect(socket, ape);
-        }
 
-        APE_socket_destroy(socket, ape);
+        APE_socket_destroy(socket);
 
         return -1;
     }
