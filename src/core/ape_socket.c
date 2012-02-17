@@ -275,6 +275,7 @@ static void ape_socket_free(ape_socket *socket)
         ape_ssl_destroy(socket->SSL.ssl);
     }
     free(socket);
+    printf("destroy socket\n");
 }
 
 int APE_socket_destroy(ape_socket *socket)

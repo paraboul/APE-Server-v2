@@ -66,6 +66,15 @@ void ape_ws_write(ape_socket *socket_client, unsigned char *data,
 	FLUSH_TCP(socket_client->s.fd);
 }
 
+void ape_ws_close(ape_socket *socket_client)
+{
+    if (APE_CLIENT(socket_client)->ws_state->close_sent)
+        return;
+    
+    APE_CLIENT(socket_client)->ws_state->close_sent = 1;
+    APE_socket_write(socket_client, "\x88\x00", 2, APE_DATA_STATIC);
+}
+
 void ape_ws_process_frame(ape_socket *socket_client, ape_global *ape)
 {
 	const buffer *buffer = &socket_client->data_in;
@@ -154,9 +163,12 @@ void ape_ws_process_frame(ape_socket *socket_client, ape_global *ape)
                             /*
                               Close frame
                               Reply by a close response
+                              TODO : include close reason
                             */
                             char payload_head[2] = { 0x88, 0x00 };
-                            //sendbin(co->fd, payload_head, 2, 0, g_ape);
+                            if (!websocket->close_sent)
+                                APE_socket_write(socket_client, payload_head, 2, APE_DATA_STATIC);
+                            APE_socket_shutdown(socket_client);
                             return;
                         }
                         case 0x9:

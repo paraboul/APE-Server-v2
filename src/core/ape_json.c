@@ -24,8 +24,60 @@
 #include <string.h>
 
 #include "ape_json.h"
+#include <math.h>
+#include <stdint.h>
+#include "JSON_parser.h"
 
-#if 0
+
+#if 1
+
+#define LENGTH_N(num) ((num<10 && num >= 0)?1:(long int)log10(fabs(num))+1);
+
+static uint32_t itos(uint64_t input, char *output, uint8_t len)
+{
+	int sign = 0, i = 1;
+
+	if (input < 0) {
+		sign = 1;
+		input = -input;
+	}
+	output[(len - i)] = '\0';
+	
+	for (i = 2; input != 0; i++) {	
+		
+		output[len - i] = '0' + (input % 10);
+		
+		input /= 10;
+	}
+	if (sign) {
+		output[len - i++] = '-';
+	}
+
+	return len-(i-1);
+}
+
+static size_t explode(const char split, char *input, char **tP, unsigned int limit) // Explode a string in an array.
+{
+	size_t i = 0;
+	
+	tP[0] = input;
+	for (i = 0; *input; input++) {
+		if (*input == split) {
+			i++;
+			*input = '\0';
+			if(*(input + 1) != '\0' && *(input + 1) != split) {
+				tP[i] = input + 1;
+			} else {
+				i--;
+			}
+		}
+		if ((i+1) == limit) {
+			return i;
+		}
+	}
+	
+	return i;
+}
 
 void set_json(const char *name, const char *value, struct json **jprev)
 {
@@ -858,6 +910,7 @@ static int key_is_array(char *key, int i)
 }
 #endif
 
+#if 1
 json_item *json_lookup(json_item *head, char *path)
 {
 	char *split[16];
@@ -896,3 +949,5 @@ json_item *json_lookup(json_item *head, char *path)
 	return NULL;
 }
 #endif
+#endif
+

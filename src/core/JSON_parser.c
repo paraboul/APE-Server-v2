@@ -26,6 +26,8 @@ SOFTWARE.
     Callbacks, comments, Unicode handling by Jean Gressmann (jean@0x42.de), 2007-2010.
     
     Changelog:
+        2010-05-08
+            JSON_value struct slightly changed (union => struct) (a.catel@weelya.com).
         2010-05-07
             Added error handling for memory allocation failure (sgbeal@googlemail.com). 
             Added diagnosis errors for invalid JSON.

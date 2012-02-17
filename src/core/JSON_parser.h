@@ -72,7 +72,7 @@ typedef struct JSON_value_struct {
         JSON_int_t integer_value;
         
         double float_value;
-        
+
         struct {
             char* value;
             size_t length;

@@ -44,12 +44,15 @@ typedef struct _websocket_state
 	int data_pos;
 	int data_inkey;
 	int frame_pos;
+	int close_sent;
 } websocket_state;
 
 void ape_ws_process_frame(ape_socket *socket_client, ape_global *ape);
 char *ape_ws_compute_key(const char *key, unsigned int key_len);
 void ape_ws_write(ape_socket *socket_client, unsigned char *data,
 	size_t len, ape_socket_data_autorelease data_type);
+	
+void ape_ws_close(ape_socket *socket_client);
 
 #define WEBSOCKET_HARDCODED_HEADERS "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n"
 

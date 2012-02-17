@@ -131,7 +131,7 @@ static int ape_http_callback(void **ctx, callback_type type,
         break;
     case HTTP_HEADER_VAL:
         ape_array_add_b(client->http.headers.list,
-                client->http.headers.tkey, client->http.headers.tval);
+        client->http.headers.tkey, client->http.headers.tval);
         client->http.headers.tkey   = buffer_new(16);
         client->http.headers.tval   = buffer_new(64);
         break;
@@ -150,7 +150,10 @@ static int ape_http_callback(void **ctx, callback_type type,
 
 static void ape_server_on_ws_frame(ape_client *client, const unsigned char *data, ssize_t length, ape_global *ape)
 {
-	ape_ws_write(client->socket, (char *)data, length, APE_DATA_COPY);
+	ape_ws_write(client->socket, CONST_STR_LEN("[\"OK\"]"), APE_DATA_STATIC);
+
+	ape_ws_close(client->socket);
+	
 	APE_EVENT(wsframe, client, data, length, ape);
 }
 
@@ -182,6 +185,7 @@ static int ape_server_http_ready(ape_client *client, ape_global *ape)
 			client->ws_state->data    = NULL;
 			client->ws_state->error   = 0;
 			client->ws_state->key.pos = 0;
+			client->ws_state->close_sent = 0;
 
 			client->ws_state->frame_payload.start  = 0;
 			client->ws_state->frame_payload.length = 0;
@@ -248,6 +252,7 @@ static void ape_server_on_read(ape_socket *socket_client, ape_global *ape)
         if (!parse_http_char(&APE_CLIENT(socket_client)->http.parser,
                 socket_client->data_in.data[i])) {
 					printf("Failed %c\n", socket_client->data_in.data[i]);
+            // TODO : graceful shutdown
             shutdown(socket_client->s.fd, 2);
             break;
         }
