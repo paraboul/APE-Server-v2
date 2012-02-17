@@ -91,9 +91,9 @@ static ape_global *ape_init()
 
     ape->seed = _ape_seed = time(NULL) ^ (getpid() << 16);
 
-    ape->hashs.servers = hashtbl_init();
-    ape->hashs.pipes.pub   = hashtbl_init();
-    ape->hashs.pipes.priv   = hashtbl_init();
+    ape->hashs.servers    = hashtbl_init(APE_HASH_STR);
+    ape->hashs.pipes.pub  = hashtbl_init(APE_HASH_INT);
+    ape->hashs.pipes.priv = hashtbl_init(APE_HASH_INT);
 
     if ((ape->conf = ape_read_config("../../etc/ape.conf", ape)) == NULL) {
         goto error;
@@ -164,7 +164,7 @@ int main(int argc, char **argv)
 
     printf("Get addr %p\n", ape_get_property(ape->extend, "foo", 3));*/
     
-    printf("rand : %llu\n", ape_rand_64());
+    printf("rand : %s\n", ape_rand_64_base64());
     
     ape_running = 1;
     events_loop(ape);

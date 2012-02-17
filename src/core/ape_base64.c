@@ -36,15 +36,13 @@ int base64_decode(unsigned char* out, const char *in, int out_length)
      return (dst - out);
 }
 
-char *base64_encode(unsigned char * src, int len)
+void base64_encode_b(unsigned char * src, char *dst, int len)
 {
 	static const char b64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-	char *ret, *dst;
 	unsigned i_bits = 0;
 	int i_shift = 0;
 	int bytes_remaining = len;
-
-	ret = dst = malloc(len * 4 / 3 + 12);
+    char *ret = dst;
 
 	if (len) {
 		while (bytes_remaining) {
@@ -61,6 +59,16 @@ char *base64_encode(unsigned char * src, int len)
 		*dst++ = '=';
 	}
 	*dst = '\0';
-	return ret;
+}
+
+char *base64_encode(unsigned char * src, int len)
+{
+	char *dst;
+
+	dst = malloc(len * 4 / 3 + 12);
+    
+    base64_encode_b(src, dst, len);
+    
+	return dst;
 }
 

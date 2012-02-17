@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011  Anthony Catel <a.catel@weelya.com>
+  Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011, 2012  Anthony Catel <a.catel@weelya.com>
 
   This file is part of APE Server.
   APE is free software; you can redistribute it and/or modify
@@ -61,6 +61,14 @@ char *ape_rand_64_base64()
     return base64_encode((unsigned char *)&ret, sizeof(uint64_t));
 }
 
+void ape_rand_64_base64_b(char *out)
+{
+    uint64_t ret = ape_rand_64();
+    
+    return base64_encode_b((unsigned char *)&ret, out, sizeof(uint64_t));
+}
+
+
 #if 0
 uint64_t uniqid(const char *seed_key, int len)
 {
@@ -73,7 +81,7 @@ uint64_t uniqid(const char *seed_key, int len)
 #endif
 
 
-ape_htable_t *hashtbl_init()
+ape_htable_t *hashtbl_init(ape_hash_type type)
 {
     ape_htable_item_t **htbl_item;
     ape_htable_t *htbl;
@@ -87,6 +95,7 @@ ape_htable_t *hashtbl_init()
 
     htbl->first = NULL;
     htbl->table = htbl_item;
+    htbl->type  = type;
 
     return htbl;
 }
@@ -101,8 +110,11 @@ void hashtbl_free(ape_htable_t *htbl)
         hTmp = htbl->table[i];
         while (hTmp != 0) {
             hNext = hTmp->next;
-            free(hTmp->key);
-            hTmp->key = NULL;
+            
+            if (htbl->type == APE_HASH_STR) {
+                free(hTmp->key.str);
+                hTmp->key.str = NULL;
+            }
             free(hTmp);
             hTmp = hNext;
         }
@@ -134,18 +146,59 @@ void hashtbl_append(ape_htable_t *htbl, const char *key,
         htbl->first->lprev = hTmp;
     }
 
-    hTmp->key = malloc(sizeof(char) * (key_len+1));
+    hTmp->key.str = malloc(sizeof(char) * (key_len+1));
 
     hTmp->addrs = (void *)structaddr;
 
-    memcpy(hTmp->key, key, key_len+1);
+    memcpy(hTmp->key.str, key, key_len+1);
 
     if (htbl->table[key_hash] != NULL) {
         hDbl = htbl->table[key_hash];
 
         while (hDbl != NULL) {
-            if (strcasecmp(hDbl->key, key) == 0) {
-                free(hTmp->key);
+            if (strcasecmp(hDbl->key.str, key) == 0) {
+                free(hTmp->key.str);
+                free(hTmp);
+                hDbl->addrs = (void *)structaddr;
+                return;
+            } else {
+                hDbl = hDbl->next;
+            }
+        }
+        hTmp->next = htbl->table[key_hash];
+    }
+
+    htbl->first = hTmp;
+
+    htbl->table[key_hash] = hTmp;
+}
+
+void hashtbl_append64(ape_htable_t *htbl, uint64_t key, void *structaddr)
+{
+    unsigned int key_hash;
+    ape_htable_item_t *hTmp, *hDbl;
+
+    key_hash = key % HACH_TABLE_MAX;
+
+    hTmp = (ape_htable_item_t *)malloc(sizeof(*hTmp));
+
+    hTmp->next = NULL;
+    hTmp->lnext = htbl->first;
+    hTmp->lprev = NULL;
+
+    if (htbl->first != NULL) {
+        htbl->first->lprev = hTmp;
+    }
+
+    hTmp->key.integer = key;
+
+    hTmp->addrs = (void *)structaddr;
+
+    if (htbl->table[key_hash] != NULL) {
+        hDbl = htbl->table[key_hash];
+
+        while (hDbl != NULL) {
+            if (key == hTmp->key.integer) {
                 free(hTmp);
                 hDbl->addrs = (void *)structaddr;
                 return;
@@ -177,7 +230,7 @@ void hashtbl_erase(ape_htable_t *htbl, const char *key, int key_len)
     hPrev = NULL;
 
     while (hTmp != NULL) {
-        if (strcasecmp(hTmp->key, key) == 0) {
+        if (strcasecmp(hTmp->key.str, key) == 0) {
             if (hPrev != NULL) {
                 hPrev->next = hTmp->next;
             } else {
@@ -193,7 +246,44 @@ void hashtbl_erase(ape_htable_t *htbl, const char *key, int key_len)
                 hTmp->lnext->lprev = hTmp->lprev;
             }
 
-            free(hTmp->key);
+            free(hTmp->key.str);
+            free(hTmp);
+            return;
+        }
+        hPrev = hTmp;
+        hTmp = hTmp->next;
+    }
+}
+
+void hashtbl_erase64(ape_htable_t *htbl, uint64_t key)
+{
+    unsigned int key_hash;
+    ape_htable_item_t *hTmp, *hPrev;
+
+    key_hash = key % HACH_TABLE_MAX;
+
+    hTmp = htbl->table[key_hash];
+    hPrev = NULL;
+
+    while (hTmp != NULL) {
+        if (key == hTmp->key.integer) {
+            if (hPrev != NULL) {
+                hPrev->next = hTmp->next;
+            } else {
+                htbl->table[key_hash] = hTmp->next;
+            }
+
+            if (hTmp->lprev == NULL) {
+                htbl->first = hTmp->lnext;
+            } else {
+                hTmp->lprev->lnext = hTmp->lnext;
+            }
+            if (hTmp->lnext != NULL) {
+                hTmp->lnext->lprev = hTmp->lprev;
+            }
+
+            hTmp->key.integer = 0;
+            
             free(hTmp);
             return;
         }
@@ -216,7 +306,7 @@ void *hashtbl_seek(ape_htable_t *htbl, const char *key, int key_len)
     hTmp = htbl->table[key_hash];
 
     while (hTmp != NULL) {
-        if (strcasecmp(hTmp->key, key) == 0) {
+        if (strcasecmp(hTmp->key.str, key) == 0) {
             return (void *)(hTmp->addrs);
         }
         hTmp = hTmp->next;
@@ -225,6 +315,24 @@ void *hashtbl_seek(ape_htable_t *htbl, const char *key, int key_len)
     return NULL;
 }
 
+void *hashtbl_seek64(ape_htable_t *htbl, uint64_t key)
+{
+    unsigned int key_hash;
+    ape_htable_item_t *hTmp;
+
+    key_hash = key % HACH_TABLE_MAX;
+
+    hTmp = htbl->table[key_hash];
+
+    while (hTmp != NULL) {
+        if (key == hTmp->key.integer) {
+            return (void *)(hTmp->addrs);
+        }
+        hTmp = hTmp->next;
+    }
+
+    return NULL;
+}
 
 
 //-----------------------------------------------------------------------------

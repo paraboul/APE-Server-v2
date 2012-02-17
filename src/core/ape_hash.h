@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011  Anthony Catel <a.catel@weelya.com>
+  Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011, 2012  Anthony Catel <a.catel@weelya.com>
 
   This file is part of APE Server.
   APE is free software; you can redistribute it and/or modify
@@ -24,16 +24,28 @@
 
 #define HACH_TABLE_MAX 8192
 
+typedef enum {
+    APE_HASH_STR,
+    APE_HASH_INT
+} ape_hash_type;
+
 typedef struct _ape_htable
 {
 	struct _ape_htable_item *first;
 	struct _ape_htable_item **table;
+	
+	ape_hash_type type;
+	
 } ape_htable_t;
 
 
 typedef struct _ape_htable_item
 {
-	char *key;
+    union {
+	    char *str;
+	    uint64_t integer;
+	} key;
+	
 	void *addrs;
 	struct _ape_htable_item *next;
 	
@@ -44,14 +56,18 @@ typedef struct _ape_htable_item
 
 uint64_t ape_rand_64();
 char *ape_rand_64_base64();
+void ape_rand_64_base64_b(char *out);
 
-ape_htable_t *hashtbl_init();
+ape_htable_t *hashtbl_init(ape_hash_type type);
 
 void hashtbl_free(ape_htable_t *htbl);
 void *hashtbl_seek(ape_htable_t *htbl, const char *key, int key_len);
+void *hashtbl_seek64(ape_htable_t *htbl, uint64_t key);
 void hashtbl_erase(ape_htable_t *htbl, const char *key, int key_len);
+void hashtbl_erase64(ape_htable_t *htbl, uint64_t key);
 void hashtbl_append(ape_htable_t *htbl, const char *key, int key_len,
         void *structaddr);
+void hashtbl_append64(ape_htable_t *htbl, uint64_t key, void *structaddr);
 uint32_t ape_hash_str(const void *key, int len);
 unsigned int MurmurHash2 ( const void * key, int len, unsigned int seed );
 
