@@ -48,7 +48,7 @@ uint64_t ape_rand_64()
         return 0;
     }
     
-    read(random, &ret, 8);
+    read(random, &ret, sizeof(uint64_t));
     close(random);
     
     return ret;
@@ -61,11 +61,13 @@ char *ape_rand_64_base64()
     return base64_encode((unsigned char *)&ret, sizeof(uint64_t));
 }
 
-void ape_rand_64_base64_b(char *out)
+uint64_t ape_rand_64_base64_b(char *out)
 {
     uint64_t ret = ape_rand_64();
     
-    return base64_encode_b((unsigned char *)&ret, out, sizeof(uint64_t));
+    base64_encode_b((unsigned char *)&ret, out, sizeof(uint64_t));
+    
+    return ret;
 }
 
 
@@ -198,7 +200,7 @@ void hashtbl_append64(ape_htable_t *htbl, uint64_t key, void *structaddr)
         hDbl = htbl->table[key_hash];
 
         while (hDbl != NULL) {
-            if (key == hTmp->key.integer) {
+            if (key == hDbl->key.integer) {
                 free(hTmp);
                 hDbl->addrs = (void *)structaddr;
                 return;

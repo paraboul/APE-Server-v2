@@ -21,6 +21,7 @@
 #include "ape_array.h"
 #include "ape_extend.h"
 #include "ape_ssl.h"
+#include "ape_pipe.h"
 
 //gcc -g *.c ../modules/*.c -I../core/ -I../../deps/ -I../../deps/mozilla/js/src/dist/include -I/usr/include/ ../../deps/c-ares/.libs/libcares.a ../../deps/confuse-2.7/src/.libs/libconfuse.a ../../deps/mozilla/js/src/libjs_static.a -lrt -lstdc++
 
@@ -165,6 +166,8 @@ int main(int argc, char **argv)
     printf("Get addr %p\n", ape_get_property(ape->extend, "foo", 3));*/
     
     printf("rand : %s\n", ape_rand_64_base64());
+    
+    APE_pipe_new(ape);
     
     ape_running = 1;
     events_loop(ape);

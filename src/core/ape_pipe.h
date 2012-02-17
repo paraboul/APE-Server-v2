@@ -1,6 +1,8 @@
 #ifndef __APE_PIPE_H
 #define __APE_PIPE_H
 
+#include "common.h"
+
 typedef struct _ape_pipe ape_pipe;
 
 typedef enum {
@@ -22,6 +24,13 @@ struct _ape_pipe
         } pub;
     } id;
     
+    union {
+        struct _ape_user *user;
+        void *ctx;
+    } link;
+    
 };
+
+ape_pipe *APE_pipe_new(ape_global *ape);
 
 #endif

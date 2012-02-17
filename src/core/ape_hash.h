@@ -56,7 +56,7 @@ typedef struct _ape_htable_item
 
 uint64_t ape_rand_64();
 char *ape_rand_64_base64();
-void ape_rand_64_base64_b(char *out);
+uint64_t ape_rand_64_base64_b(char *out);
 
 ape_htable_t *hashtbl_init(ape_hash_type type);
 

@@ -13,4 +13,7 @@ struct _ape_user
     
 };
 
+ape_user *APE_user_new(ape_global *ape);
+
 #endif
+
