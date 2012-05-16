@@ -79,7 +79,7 @@ ape_pool_t *ape_grow_pool(ape_pool_list_t *list, size_t size, size_t n)
     return pool;
 }
 
-void ape_destroy_pool_ordered(ape_pool_t *pool)
+void ape_destroy_pool_ordered(ape_pool_t *pool, ape_pool_clean_callback cleaner)
 {
     ape_pool_t *tPool = NULL;
 
@@ -88,7 +88,9 @@ void ape_destroy_pool_ordered(ape_pool_t *pool)
         if (pool->flags & APE_POOL_ALLOC) {
 
             if (tPool != NULL) {
-
+                if (cleaner != NULL) {
+                    cleaner(tPool);
+                }
                 free(tPool);
             }
             tPool = pool;
@@ -96,6 +98,9 @@ void ape_destroy_pool_ordered(ape_pool_t *pool)
         pool = pool->next;
     }
     if (tPool != NULL) {
+        if (cleaner != NULL) {
+            cleaner(tPool);
+        }
         free(tPool);
     }
 }
@@ -138,9 +143,10 @@ void ape_destroy_pool_list(ape_pool_list_t *list)
     free(list);
 }
 
-void ape_destroy_pool_list_ordered(ape_pool_list_t *list)
+void ape_destroy_pool_list_ordered(ape_pool_list_t *list,
+            ape_pool_clean_callback cleaner)
 {
-    ape_destroy_pool_ordered(list->head);
+    ape_destroy_pool_ordered(list->head, cleaner);
     free(list);
 }
 

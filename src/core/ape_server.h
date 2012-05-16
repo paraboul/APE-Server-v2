@@ -17,7 +17,9 @@ typedef struct _ape_client {
     ape_socket *socket;
     ape_socket *server;
     struct _websocket_state *ws_state;
-
+    
+    ape_client_serial_method_e serial_method;
+    
     struct {
         http_parser parser;
         http_method_t method;
@@ -30,7 +32,7 @@ typedef struct _ape_client {
             buffer *tval;
         } headers;
     } http;
-
+    
     struct {
         struct JSON_parser_struct* parser;
     } json;

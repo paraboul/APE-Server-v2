@@ -2,6 +2,8 @@
 #include "ape_array.h"
 #include <string.h>
 
+static void ape_array_clean_cb(ape_pool_t *item);
+
 ape_array_t *ape_array_new(size_t n)
 {
     ape_array_t *array;
@@ -154,7 +156,28 @@ void ape_array_add(ape_array_t *array, const char *key, const char *value)
 
 void ape_array_destroy(ape_array_t *array)
 {
-    ape_destroy_pool_list_ordered((ape_pool_list_t *)array);
+    ape_destroy_pool_list_ordered((ape_pool_list_t *)array, ape_array_clean_cb);
+}
+
+static void ape_array_clean_cb(ape_pool_t *item)
+{
+    ape_array_item_t *array = (ape_array_item_t *)item;
+
+    if (!(array->pool.flags & APE_ARRAY_USED_SLOT)) {
+        return;
+    }
+    array->pool.flags &= ~APE_ARRAY_USED_SLOT;
+
+    buffer_destroy(array->key);
+    
+    switch(array->pool.flags & ~APE_POOL_ALL_FLAGS) {
+        case APE_ARRAY_VAL_BUF:
+            buffer_destroy(array->pool.ptr.buf);
+            break;
+        case APE_ARRAY_VAL_INT:
+        default:
+            break;
+    }
 }
 
 // vim: ts=4 sts=4 sw=4 et
