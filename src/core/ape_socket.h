@@ -97,10 +97,11 @@ typedef struct {
 
 /* Jobs pool */
 /* (1 << 0) is reserved */
-#define APE_SOCKET_JOB_WRITEV (1 << 1)
+#define APE_SOCKET_JOB_WRITEV   (1 << 1)
 #define APE_SOCKET_JOB_SENDFILE (1 << 2)
 #define APE_SOCKET_JOB_SHUTDOWN (1 << 3)
-#define APE_SOCKET_JOB_ACTIVE (1 << 4)
+#define APE_SOCKET_JOB_ACTIVE   (1 << 4)
+#define APE_SOCKET_JOB_IOV      (1 << 5)
 
 typedef struct _ape_socket_jobs_t {
     union {

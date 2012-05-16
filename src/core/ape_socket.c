@@ -60,7 +60,7 @@ int _nco = 0, _ndec = 0;
 static ape_socket_jobs_t *ape_socket_new_jobs_queue(size_t n);
 static ape_socket_jobs_t *ape_socket_job_get_slot(ape_socket *socket, int type);
 static ape_pool_list_t *ape_socket_new_packet_queue(size_t n);
-static int ape_socket_queue_data(ape_socket *socket, char *data, size_t len, int offset, ape_socket_data_autorelease data_type);
+static int ape_socket_queue_data(ape_socket *socket, char *data, size_t len, size_t offset, ape_socket_data_autorelease data_type);
 static void ape_init_job_list(ape_pool_list_t *list, size_t n);
 static void ape_socket_shutdown_force(ape_socket *socket);
 
@@ -275,7 +275,7 @@ static void ape_socket_free(ape_socket *socket)
         ape_ssl_destroy(socket->SSL.ssl);
     }
     free(socket);
-    printf("destroy socket\n");
+    //printf("destroy socket\n");
 }
 
 int APE_socket_destroy(ape_socket *socket)
@@ -313,7 +313,7 @@ int APE_sendfile(ape_socket *socket, const char *file)
     off_t offset_file = 0, nwrite = 0;
 
     if ((fd = open(file, O_RDONLY)) == -1) {
-        printf("Failed to open %s\n", file);
+        printf("Failed to open %s - %s\n", file, strerror(errno));
         return 0;
     }
 
@@ -348,11 +348,27 @@ int APE_sendfile(ape_socket *socket, const char *file)
         /* BSD/OSX require offset */
         job->offset  = offset_file;
     } else {
-        printf("File sent...\n");
+        //printf("File sent...\n");
         close(fd);
     }
     
     return 1;
+}
+
+int APE_socket_writev(ape_socket *socket, const struct iovec *iov, int iovcnt)
+{
+    if (socket->states.state != APE_SOCKET_ST_ONLINE ||
+            iovcnt == 0) {
+        return -1;        
+    }
+    if (APE_SOCKET_ISSECURE(socket)) {
+        /* NOT IMPLEMENTED */
+        return -1;
+    }
+    
+    writev(socket->s.fd, iov, iovcnt);
+    
+    return 0;
 }
 
 int APE_socket_write(ape_socket *socket, unsigned char *data,
@@ -372,7 +388,7 @@ int APE_socket_write(ape_socket *socket, unsigned char *data,
     if (socket->states.flags & APE_SOCKET_WOULD_BLOCK ||
             socket->jobs.head->flags & APE_SOCKET_JOB_ACTIVE) {
         ape_socket_queue_data(socket, data, len, 0, data_type);
-        printf("Would block %d\n", len);
+        //printf("Would block %d\n", len);
         return len;
     }
     if (APE_SOCKET_ISSECURE(socket)) {
@@ -433,6 +449,7 @@ int APE_socket_write(ape_socket *socket, unsigned char *data,
         (data_type == APE_DATA_COPY ? APE_DATA_OWN : data_type));
     
     if (io_error) {
+        printf("IO error\n");
         ape_socket_shutdown_force(socket);
         return -1;
     }
@@ -516,6 +533,9 @@ int ape_socket_do_jobs(ape_socket *socket)
                 /* ERR */
                 /* TODO : Handle this */
                 if (n == -1) {
+                    if (errno == EAGAIN) {
+                        printf("EAGAIN in writev\n");
+                    }
                     printf("Err in writev %s\n", strerror(errno));
                     job = (ape_socket_jobs_t *)job->next; /* useless? */
                     return 0;
@@ -601,7 +621,7 @@ int ape_socket_do_jobs(ape_socket *socket)
 }
 
 static int ape_socket_queue_data(ape_socket *socket,
-        char *data, size_t len, int offset, ape_socket_data_autorelease data_type)
+        char *data, size_t len, size_t offset, ape_socket_data_autorelease data_type)
 {
     ape_socket_jobs_t *job;
     ape_socket_packet_t *packets;

@@ -91,7 +91,7 @@ void ape_ws_process_frame(ape_socket *socket_client, ape_global *ape)
 
                 if (++websocket->key.pos == 4) {
                     websocket->step = WS_STEP_DATA;
-					websocket->data_inkey = 0;
+					          websocket->data_inkey = 0;
                 }
                 break;
             case WS_STEP_START:
@@ -116,6 +116,7 @@ void ape_ws_process_frame(ape_socket *socket_client, ape_global *ape)
                         break;
                     default:
                         /* We have the actual length */
+                        printf("small length of %d\n", *pData & 0x7F);
                         websocket->frame_payload.extended_length = *pData & 0x7F;
                         websocket->step = WS_STEP_KEY;
                         break;
@@ -140,12 +141,13 @@ void ape_ws_process_frame(ape_socket *socket_client, ape_global *ape)
             case WS_STEP_DATA:
                 if (websocket->data_pos == 0) {
                     websocket->data_pos = websocket->offset;
+                    /* TODO: zerocopy - uncypher data in place */
 					websocket->data = malloc(sizeof(char) * websocket->frame_payload.extended_length + 1);
                 }
                 
                 //*pData ^= websocket->key.val[websocket->data_inkey++ % 4];
-				websocket->data[websocket->data_inkey] = *pData ^ websocket->key.val[websocket->data_inkey % 4];
-				websocket->data_inkey++;
+		        websocket->data[websocket->data_inkey] = *pData ^ websocket->key.val[websocket->data_inkey % 4];
+		        websocket->data_inkey++;
 				
                 if (--websocket->frame_payload.extended_length == 0) {
                     unsigned char saved;
@@ -194,6 +196,7 @@ void ape_ws_process_frame(ape_socket *socket_client, ape_global *ape)
                         case 0xA: /* Never called as long as we never ask for pong */
                             break;
                         default:
+                            printf("Frame of type %.2x\n", websocket->frame_payload.start);
 							websocket->on_frame(APE_CLIENT(socket_client), websocket->data, websocket->data_inkey, ape);
 							#if 0
                             /* Data frame */

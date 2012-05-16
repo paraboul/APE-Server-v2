@@ -28,12 +28,13 @@
 int ape_running = 0;
 extern int _nco, _ndec, _co_event, _disco_event;
 
+#if 0
 ape_module_t *ape_modules[] = {
 	//&ape_inotify_module,
 	NULL,
 	NULL
 };
-
+#endif
 
 static void signal_handler(int sign)
 {
@@ -93,6 +94,7 @@ static ape_global *ape_init()
     ape->seed = _ape_seed = time(NULL) ^ (getpid() << 16);
 
     ape->hashs.servers    = hashtbl_init(APE_HASH_STR);
+    ape->hashs.cmds       = hashtbl_init(APE_HASH_STR);
     ape->hashs.pipes.pub  = hashtbl_init(APE_HASH_INT);
     ape->hashs.pipes.priv = hashtbl_init(APE_HASH_INT);
 
