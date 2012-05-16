@@ -17,6 +17,8 @@
 #define _APE_ABS_MASK(val) (val >> sizeof(int) * 8 - 1)
 #define APE_ABS(val) (val + _APE_ABS_MASK(val)) ^ _APE_ABS_MASK(val)
 
+#define _HAVE_MSGPACK
+
 typedef struct _ape_global ape_global;
 
 #include "ape_config.h"
@@ -58,6 +60,7 @@ struct _ape_global {
 
     struct {
         ape_htable_t *servers;
+        ape_htable_t *cmds;
         
         struct {
             ape_htable_t *pub;
@@ -74,6 +77,13 @@ struct _ape_global {
     int is_running;
     ape_extend_t *extend;
 };
+
+typedef enum {
+    APE_CLIENT_SERIAL_JSON,
+#ifdef _HAVE_MSGPACK
+    APE_CLIENT_SERIAL_MSGPACK
+#endif
+} ape_client_serial_method_e;
 
 
 #endif
