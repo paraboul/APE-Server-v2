@@ -534,10 +534,10 @@ int ape_socket_do_jobs(ape_socket *socket)
                 /* TODO : Handle this */
                 if (n == -1) {
                     if (errno == EAGAIN) {
-                        printf("EAGAIN in writev\n");
+                        printf("EAGAIN in writev %d\n", n);
                     }
-                    printf("Err in writev %s\n", strerror(errno));
-                    job = (ape_socket_jobs_t *)job->next; /* useless? */
+                    socket->states.flags |= APE_SOCKET_WOULD_BLOCK;
+                    //job = (ape_socket_jobs_t *)job->next; /* useless? */
                     return 0;
                 }
                 packet = (ape_socket_packet_t *)plist->head;
@@ -594,6 +594,7 @@ int ape_socket_do_jobs(ape_socket *socket)
             /* Job finished */
             close(job->ptr.fd);
             job->offset = 0;
+            job->ptr.data = NULL;
             
             break;
         }
@@ -789,6 +790,7 @@ static ape_socket_jobs_t *ape_socket_job_get_slot(ape_socket *socket, int type)
             !(jobs->flags & APE_SOCKET_JOB_ACTIVE)) {
 
         jobs->flags |= APE_SOCKET_JOB_ACTIVE | type;
+        
         return jobs;
     }
 
