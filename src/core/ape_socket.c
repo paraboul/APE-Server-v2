@@ -274,8 +274,8 @@ static void ape_socket_free(ape_socket *socket)
     if (socket->SSL.issecure) {
         ape_ssl_destroy(socket->SSL.ssl);
     }
+
     free(socket);
-    //printf("destroy socket\n");
 }
 
 int APE_socket_destroy(ape_socket *socket)
@@ -302,6 +302,7 @@ int APE_socket_destroy(ape_socket *socket)
     ape_dispatch_async(ape_socket_free, socket);
     
     /* TODO: Free any pending job !!! */
+    printf("socket set to destroy %p\n", socket);
 
     return 0;
 }
@@ -311,6 +312,10 @@ int APE_sendfile(ape_socket *socket, const char *file)
     int fd;
     ape_socket_jobs_t *job;
     off_t offset_file = 0, nwrite = 0;
+    
+    if (socket->states.state != APE_SOCKET_ST_ONLINE) {
+        return 0;
+    }
 
     if ((fd = open(file, O_RDONLY)) == -1) {
         printf("Failed to open %s - %s\n", file, strerror(errno));

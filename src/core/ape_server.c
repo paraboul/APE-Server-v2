@@ -7,6 +7,7 @@
 #include "ape_websocket.h"
 #include "ape_ssl.h"
 #include "ape_common_pattern.h"
+#include "ape_timers.h"
 
 #include <string.h>
 
@@ -287,8 +288,8 @@ static int ape_server_http_ready(ape_client *client, ape_global *ape)
     case APE_TRANSPORT_NU:
     case APE_TRANSPORT_FT:
     {
-        APE_socket_write(client->socket, CONST_STR_LEN("HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n"), APE_DATA_STATIC);
-        
+        APE_socket_write(client->socket, CONST_STR_LEN("HTTP/1.1 200 OK\r\nContent-Length: 87\r\n\r\n"), APE_DATA_STATIC);
+        APE_sendfile(client->socket, "./foo.html");
         //APE_EVENT(request, client, ape);
         
         HTTP_PARSER_RESET(&client->http.parser);
@@ -299,6 +300,7 @@ static int ape_server_http_ready(ape_client *client, ape_global *ape)
         client->http.transport       = APE_TRANSPORT_NU;
         
         ape_array_destroy(client->http.headers.list);
+        
         buffer_destroy(client->http.path);
         client->http.path = NULL;
         
@@ -385,14 +387,13 @@ static void ape_server_on_connect(ape_socket *socket_server, ape_socket *socket_
 static void ape_server_on_disconnect(ape_socket *socket_client, ape_global *ape)
 {
 
-    printf("Socket disconnected\n");
-    if (APE_CLIENT(socket_client)->http.path != NULL) {
-        buffer_destroy(APE_CLIENT(socket_client)->http.path);
-    }
-    /* TODO clean headers */
-
-    free(socket_client->_ctx); /* release the ape_client object */
+    buffer_destroy(APE_CLIENT(socket_client)->http.path);
+    APE_CLIENT(socket_client)->http.path = NULL;
     
+    /* TODO clean headers */
+    
+    ape_dispatch_async(free, socket_client->_ctx);
+
     _disco_event++;
     
     //printf("Client has disconnected\n");

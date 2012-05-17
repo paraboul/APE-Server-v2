@@ -41,7 +41,7 @@ void buffer_delete(buffer *b)
 
 void buffer_destroy(buffer *b)
 {
-    if (b->data != NULL) {
+    if (b != NULL && b->data != NULL) {
         free(b->data);
     }
     free(b);
