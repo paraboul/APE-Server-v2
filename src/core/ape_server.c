@@ -341,6 +341,7 @@ static void ape_server_on_read(ape_socket *socket_client, ape_global *ape)
     int i;
     //printf("data used : %d\n", socket_client->data_in.used);
     /* TODO : implement duff device here (speedup !)*/
+
     for (i = 0; i < socket_client->data_in.used; i++) {
 
         if (!parse_http_char(&APE_CLIENT(socket_client)->http.parser,
@@ -349,6 +350,9 @@ static void ape_server_on_read(ape_socket *socket_client, ape_global *ape)
 					printf("next %c\n", socket_client->data_in.data[i+1]);
             // TODO : graceful shutdown
             shutdown(socket_client->s.fd, 2);
+            break;
+        }
+        if (socket_client->states.state != APE_SOCKET_ST_ONLINE) {
             break;
         }
         //printf("%c", socket_client->data_in.data[i]);

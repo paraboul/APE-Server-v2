@@ -142,6 +142,8 @@ struct _ape_socket {
     uint16_t    remote_port;
 };
 
+#define APE_SOCKET_FD(socket) socket->s.fd
+
 #define APE_SOCKET_PACKET_FREE (1 << 1)
 
 struct _ape_socket_packet {

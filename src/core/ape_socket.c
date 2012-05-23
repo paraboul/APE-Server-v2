@@ -262,7 +262,6 @@ static void ape_socket_shutdown_force(ape_socket *socket)
     }
     
     if (shutdown(socket->s.fd, 2) != 0) {
-        printf("== FAILED to shutdown ==\n");
         APE_socket_destroy(socket);
     }
 }
@@ -270,10 +269,13 @@ static void ape_socket_shutdown_force(ape_socket *socket)
 static void ape_socket_free(ape_socket *socket)
 {
     _ndec++;
-    //printf("Socket collected %d\n", socket->s.fd);
+
     if (socket->SSL.issecure) {
         ape_ssl_destroy(socket->SSL.ssl);
     }
+
+    buffer_delete(&socket->data_in);
+    ape_destroy_pool(socket->jobs.head);
 
     free(socket);
 }
@@ -289,20 +291,15 @@ int APE_socket_destroy(ape_socket *socket)
     if (socket->callbacks.on_disconnect != NULL) {
         socket->callbacks.on_disconnect(socket, ape);
     }
-        
-    //printf("====== Destroy : %d ======\n", socket->s.fd);
-    close(socket->s.fd);
-
-    buffer_delete(&socket->data_in);
+    
+    printf("====== Destroy : %d ======\n", APE_SOCKET_FD(socket));
+    close(APE_SOCKET_FD(socket));
 
     socket->states.state = APE_SOCKET_ST_OFFLINE;
-
-    ape_destroy_pool(socket->jobs.head);
 
     ape_dispatch_async(ape_socket_free, socket);
     
     /* TODO: Free any pending job !!! */
-    printf("socket set to destroy %p\n", socket);
 
     return 0;
 }
@@ -380,7 +377,7 @@ int APE_socket_write(ape_socket *socket, unsigned char *data,
     size_t len, ape_socket_data_autorelease data_type)
 {
     ssize_t t_bytes = 0, r_bytes = len, n = 0;
-    int io_error = 0;
+    int io_error = 0, rerrno;
 
     if (socket->states.state != APE_SOCKET_ST_ONLINE ||
             len == 0) {
@@ -441,6 +438,7 @@ int APE_socket_write(ape_socket *socket, unsigned char *data,
                     return r_bytes;
                 } else {
                     io_error = 1;
+                    rerrno = errno;
                     break;
                 }
             }
@@ -454,7 +452,7 @@ int APE_socket_write(ape_socket *socket, unsigned char *data,
         (data_type == APE_DATA_COPY ? APE_DATA_OWN : data_type));
     
     if (io_error) {
-        printf("IO error\n");
+        printf("IO error (%d) : %s\n", APE_SOCKET_FD(socket), strerror(rerrno));
         ape_socket_shutdown_force(socket);
         return -1;
     }
@@ -533,6 +531,7 @@ int ape_socket_do_jobs(ape_socket *socket)
                     packet = (ape_socket_packet_t *)packet->pool.next;
 
                 }
+                printf("Call to writev\n");
                 /* TODO: loop until EAGAIN? */
                 n = writev(socket->s.fd, chunks, i);
                 /* ERR */
@@ -724,6 +723,11 @@ inline int ape_socket_accept(ape_socket *socket)
 inline int ape_socket_read(ape_socket *socket)
 {
     ssize_t nread;
+    
+    if (socket->states.state != APE_SOCKET_ST_ONLINE) {
+        printf("socket is not online\n");
+        return 0;
+    }
     
     do {
         /* TODO : avoid extra calling (avoid realloc) */
