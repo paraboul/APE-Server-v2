@@ -9,13 +9,14 @@
 #include "ape_array.h"
 #include "ape_transports.h"
 
-
 #define APE_CLIENT(socket) ((ape_client *)socket->_ctx)
 
 typedef struct _ape_client {
     char ip[16];
     ape_socket *socket;
     ape_socket *server;
+    struct _ape_user_session *user_session;
+    
     struct _websocket_state *ws_state;
     
     ape_client_serial_method_e serial_method;

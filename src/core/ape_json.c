@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2006, 2007, 2008, 2009, 2010  Anthony Catel <a.catel@weelya.com>
+  Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011, 2012  Anthony Catel <a.catel@weelya.com>
 
   This file is part of APE Server.
   APE is free software; you can redistribute it and/or modify
@@ -254,6 +254,10 @@ static int escape_json_string(const char *in, char *out, int len)
 			case '"':
 				out[e++] = '\\';
 				out[e] = '"';
+				break;
+			case '\'':
+				out[e++] = '\\';
+				out[e] = '\'';
 				break;
 			case '\\':
 				out[e++] = '\\';
@@ -708,7 +712,7 @@ void json_merge(json_item *obj_out, json_item *obj_in)
 }
 
 
-static int json_callback(void *ctx, int type, const JSON_value* value)
+int json_callback(void *ctx, int type, const JSON_value* value)
 {
 	json_context *cx = (json_context *)ctx;
 	json_item *jval = NULL;

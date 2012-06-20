@@ -17,7 +17,7 @@
 #define _APE_ABS_MASK(val) (val >> sizeof(int) * 8 - 1)
 #define APE_ABS(val) (val + _APE_ABS_MASK(val)) ^ _APE_ABS_MASK(val)
 
-#define _HAVE_MSGPACK
+//#define _HAVE_MSGPACK
 
 typedef struct _ape_global ape_global;
 

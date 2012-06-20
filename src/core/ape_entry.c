@@ -10,6 +10,7 @@
 #include <sys/time.h>
 #include <sys/resource.h>
 
+#include "ape_cmd.h"
 #include "ape_hash.h"
 #include "ape_socket.h"
 #include "ape_events_loop.h"
@@ -101,6 +102,8 @@ static ape_global *ape_init()
     if ((ape->conf = ape_read_config("../../etc/ape.conf", ape)) == NULL) {
         goto error;
     }
+    
+    ape_cmd_init_core(ape);
 
     ape->extend = ape_array_new(8);
 	

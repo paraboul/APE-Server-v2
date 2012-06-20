@@ -632,6 +632,8 @@ static int ape_socket_queue_data(ape_socket *socket,
     ape_socket_packet_t *packets;
     ape_pool_list_t *list;
     
+    printf("data pushed to queue\n");
+    
     /* if the data is a local scoped data, copy it */
     data_type = (data_type == APE_DATA_STATIC ? APE_DATA_COPY : data_type);
     

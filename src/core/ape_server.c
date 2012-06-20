@@ -8,6 +8,8 @@
 #include "ape_ssl.h"
 #include "ape_common_pattern.h"
 #include "ape_timers.h"
+#include "ape_json.h"
+#include "ape_user.h"
 
 #include <string.h>
 
@@ -129,7 +131,7 @@ static int ape_http_callback(void **ctx, callback_type type,
 
             client->json.parser = new_JSON_parser(&config);
         }
-        break;
+        break;	
     case HTTP_VERSION_MINOR:
         /* fall through */
     case HTTP_VERSION_MAJOR:
@@ -177,27 +179,62 @@ static void ape_server_on_ws_frame(ape_client *client, const unsigned char *data
         printf("\n");    
         
     } else if (client->serial_method == APE_CLIENT_SERIAL_JSON) {
+
 #endif
-        JSON_config config;
+        /*
+        ape_ws_write(client->socket,
+            (unsigned char *)data, length,
+            APE_DATA_COPY);
+            
+            return;*/
+        int i;
+        
+        json_context jcx = {
+            .key_under   = 0,
+            .start_depth = 0,
+            .head        = NULL,
+            .current_cx  = NULL
+        };
         
         if (client->json.parser == NULL) {
+            JSON_config config;
             init_JSON_config(&config);
             config.depth                  = 15;
-            config.callback               = NULL;
-            config.callback_ctx           = NULL;
+            config.callback               = json_callback;
+            config.callback_ctx           = &jcx;
             config.allow_comments         = 0;
             config.handle_floats_manually = 0;
 
             if ((client->json.parser = new_JSON_parser(&config)) == NULL) {
-                ape_ws_write(client->socket, (char *)CONST_STR_LEN(PATTERN_ERR_INTERNAL),
+                ape_ws_write(client->socket,
+                    (char *)CONST_STR_LEN(PATTERN_ERR_INTERNAL),
                     APE_DATA_GLOBAL_STATIC);
                 return;
             }
         }
+        
+        for (i = 0; i < length; i++) {
+            if (!JSON_parser_char(client->json.parser, data[i])) {   
+                ape_ws_write(client->socket,
+                    (char *)CONST_STR_LEN(PATTERN_ERR_BAD_JSON),
+                    APE_DATA_GLOBAL_STATIC);
+                    
+                    return;
+                break;
+            }
+        }
+        if (!JSON_parser_done(client->json.parser)) {
+            ape_ws_write(client->socket,
+                (char *)CONST_STR_LEN(PATTERN_ERR_BAD_JSON),
+                APE_DATA_GLOBAL_STATIC);
+                
+                return;            
+        }
+        
+        ape_cmd_process_multi(jcx.head, client, ape);      
 #ifdef _HAVE_MSGPACK
     }
-#endif    
-	ape_ws_write(client->socket, (char *)CONST_STR_LEN(PATTERN_ERR_BAD_JSON), APE_DATA_GLOBAL_STATIC);
+#endif
 
 	//ape_ws_close(client->socket);
 	
@@ -223,6 +260,8 @@ static int ape_server_http_ready(ape_client *client, ape_global *ape)
 	        
 		char *ws_computed_key;
 		const buffer *ws_key = REQUEST_HEADER("Sec-WebSocket-Key");
+        
+        client->http.transport = APE_TRANSPORT_WS;
         
 		if (ws_key) {
 		    buffer *ws_proto = REQUEST_HEADER("Sec-WebSocket-Protocol");
@@ -254,9 +293,11 @@ static int ape_server_http_ready(ape_client *client, ape_global *ape)
 			    case APE_CLIENT_SERIAL_JSON:
 			        APE_socket_write(client->socket, CONST_STR_LEN("Sec-WebSocket-Protocol: json.ape\r\n"), APE_DATA_STATIC);
 			        break;
+#ifdef _HAVE_MSGPACK
 			    case APE_CLIENT_SERIAL_MSGPACK:
 			        APE_socket_write(client->socket, CONST_STR_LEN("Sec-WebSocket-Protocol: msgpack.ape\r\n"), APE_DATA_STATIC);
 			        break;
+#endif			        
 			}
 			
 			APE_socket_write(client->socket, CONST_STR_LEN("Sec-WebSocket-Accept: "), APE_DATA_STATIC);
@@ -288,9 +329,7 @@ static int ape_server_http_ready(ape_client *client, ape_global *ape)
     case APE_TRANSPORT_NU:
     case APE_TRANSPORT_FT:
     {
-        APE_socket_write(client->socket, CONST_STR_LEN("HTTP/1.1 200 OK\r\nContent-Length: 87\r\n\r\n"), APE_DATA_STATIC);
-        APE_sendfile(client->socket, "./foo.html");
-        //APE_EVENT(request, client, ape);
+        APE_EVENT(request, client, ape);
         
         HTTP_PARSER_RESET(&client->http.parser);
         client->http.parser.callback = ape_http_callback;
@@ -367,6 +406,8 @@ static void ape_server_on_connect(ape_socket *socket_server, ape_socket *socket_
     client          = malloc(sizeof(*client)); /* setup the client struct */
     client->socket  = socket_client;
     client->server  = socket_server;
+    
+    client->user_session = NULL;
 
     socket_client->_ctx = client; /* link the socket to the client struct */
 

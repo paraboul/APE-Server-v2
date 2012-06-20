@@ -9,6 +9,12 @@ typedef ape_pool_list_t ape_array_t;
 #define APE_ARRAY_USED_SLOT (1 << 1)
 #define APE_ARRAY_VAL_BUF (1 << 2)
 #define APE_ARRAY_VAL_INT (1 << 3)
+#define APE_ARRAY_HASHED  (1 << 4)
+
+typedef enum {
+    APE_ARRAY_HASH,
+    APE_ARRAY_LIST
+} ape_array_index_e;
 
 struct _ape_array_item {
     /* inherit from ape_pool_t (same first sizeof(ape_pool_t) bytes memory-print) */

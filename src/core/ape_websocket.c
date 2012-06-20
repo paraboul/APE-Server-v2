@@ -116,7 +116,6 @@ void ape_ws_process_frame(ape_socket *socket_client, ape_global *ape)
                         break;
                     default:
                         /* We have the actual length */
-                        printf("small length of %d\n", *pData & 0x7F);
                         websocket->frame_payload.extended_length = *pData & 0x7F;
                         websocket->step = WS_STEP_KEY;
                         break;
@@ -167,6 +166,7 @@ void ape_ws_process_frame(ape_socket *socket_client, ape_global *ape)
                               Reply by a close response
                               TODO : include close reason
                             */
+                            printf("Got a close frame\n");
                             char payload_head[2] = { 0x88, 0x00 };
                             if (!websocket->close_sent)
                                 APE_socket_write(socket_client, payload_head, 2, APE_DATA_STATIC);
@@ -196,7 +196,7 @@ void ape_ws_process_frame(ape_socket *socket_client, ape_global *ape)
                         case 0xA: /* Never called as long as we never ask for pong */
                             break;
                         default:
-                            printf("Frame of type %.2x\n", websocket->frame_payload.start);
+                            /* TODO handle binary/ASCII */
 							websocket->on_frame(APE_CLIENT(socket_client), websocket->data, websocket->data_inkey, ape);
 							#if 0
                             /* Data frame */

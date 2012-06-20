@@ -102,6 +102,7 @@ typedef struct _json_context {
 } json_context;
 
 
+int json_callback(void *ctx, int type, const JSON_value* value);
 void set_json(const char *name, const char *value, struct json **jprev);
 struct json *json_copy(struct json *jbase);
 void json_attach(struct json *json_father, struct json *json_child, unsigned int type);

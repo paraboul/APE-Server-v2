@@ -8,7 +8,7 @@ ape_array_t *ape_array_new(size_t n)
 {
     ape_array_t *array;
     array = (ape_array_t *)ape_new_pool_list(sizeof(ape_array_item_t), n);
-
+    
     return array;
 }
 
