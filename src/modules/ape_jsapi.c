@@ -1,6 +1,4 @@
-//#define DEBUG 1
-//#include "../deps/jsapi/src/jsapi.h"
-#include <jsapi.h>
+
 #include <APEapi.h>
 #include <ape_events.h>
 #include <glob.h>
@@ -771,10 +769,10 @@ APE_JS_NATIVE(ape_native_socket_write)
 
     sock = privates->slots[1];
     
-    if (APE_socket_write(sock, cstring, lstring) == 0) {
-        free(cstring);
+    if (APE_socket_write(sock, cstring, lstring, APE_DATA_AUTORELEASE) == 0) {
+        //free(cstring);
     } else {
-		printf("FAILED TO WRITE\n");
+		//printf("FAILED TO WRITE\n");
 	}
     
     return JS_TRUE;
@@ -792,7 +790,7 @@ APE_JS_NATIVE(ape_native_socket_listen)
 		return JS_TRUE;
 	}
 
-	APE_socket_listen(socket, (uint16_t)port, "127.0.0.1", ape);
+	APE_socket_listen(socket, (uint16_t)port, "127.0.0.1");
 
 	return JS_TRUE;
 }
@@ -847,7 +845,7 @@ APE_JS_NATIVE(ape_native_socket_constructor)
 	
 	cip = JS_EncodeString(cx, ip);
 	
-	socket 		    = APE_socket_new(APE_SOCKET_PT_TCP, 0);
+	socket 		    = APE_socket_new(APE_SOCKET_PT_TCP, 0, ape);
 	
 	if (socket == NULL) {
 		printf("=============\n\nCannot allocate socket\n===================\n");
@@ -860,7 +858,7 @@ APE_JS_NATIVE(ape_native_socket_constructor)
 	socket->callbacks.on_disconnect = ape_js_socket_disconnect;
 	socket->callbacks.on_read = ape_js_socket_read;
 	
-    if (APE_socket_connect(socket, port, cip, ape) < 0) {
+    if (APE_socket_connect(socket, port, cip) < 0) {
         printf("Failed to connect\n");
     }
     
@@ -898,6 +896,8 @@ static JSObject *ape_socket_to_jsobj(JSContext *cx, ape_socket *socket,
     
     JS_SetPrivate(cx, obj, (void *)privates);
     socket->ctx = obj;
+    
+    JS_AddObjectRoot(cx, (JSObject **)&socket->ctx);
     
     return obj;
 }
@@ -977,7 +977,7 @@ static JSContext *ape_jsapi_createcontext(JSRuntime *rt, ape_global *ape)
 	}
 	
 	#if 0
-	JS_SetGCZeal(cx, 2);
+	JS_SetGCZeal(cx, 2, 10, JS_FALSE);
     #endif
     
 	JS_SetOptions(cx, JSOPTION_VAROBJFIX | /*JSOPTION_JIT | */JSOPTION_METHODJIT | JSOPTION_METHODJIT_ALWAYS | JSOPTION_TYPE_INFERENCE);
@@ -1044,7 +1044,7 @@ static int ape_module_jsapi_loaded(ape_global *ape)
         return -1;
     }
 
-    if ((code = JS_CompileFile(cx, JS_GetGlobalObject(cx),
+    if ((code = JS_CompileUTF8File(cx, JS_GetGlobalObject(cx),
             "../../scripts/main.js")) == NULL) {
         return -1;
     }
@@ -1072,7 +1072,7 @@ static int ape_module_jsapi_request(ape_client *client, ape_global *ape)
     
     args[0] = OBJECT_TO_JSVAL(socket);
     args[1] = STRING_TO_JSVAL(jspath);
-    
+
     ape_js_trigger_event(cx, server, "request", 2, args);
     
     
