@@ -2,12 +2,16 @@
 #include "ape_json.h"
 #include "ape_server.h"
 #include "ape_hash.h"
+#include "ape_user.h"
 
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
+
+static void ape_cmd__connect(ape_message_t *msg, ape_global *ape);
 
 static ape_cmd_spec_t ape_cmd_core[] = {
-    APE_CMD("connect", NULL, APE_CMD_FAILFATAL),
+    APE_CMD("connect", ape_cmd__connect, APE_CMD_FAILFATAL),
     APE_CMD_END
 };
 
@@ -36,6 +40,7 @@ ape_cmd_spec_t *APE_cmd_lookup(const char *name, int len, ape_global *ape)
 int ape_cmd_process(json_item *head, ape_client *client, ape_global *ape)
 {
     int i;
+    
     ape_message_t msg = {
         .cmd    = NULL,
         .client = client,
@@ -48,27 +53,46 @@ int ape_cmd_process(json_item *head, ape_client *client, ape_global *ape)
         case 0: /* chl */
             if (head->type != JSON_T_INTEGER) {
                 printf("BAD_CHL\n");
-                break;
+                return 0;
             }
             msg.chl = head->jval.vu.integer_value;
             
             break;
-        case 1: /* params */
+        case 1: /* params (optional) */
             break;
-        case 2:
+        case 2: /* cmd (optional) */
+            printf("two?\n");
+            if (head->type != JSON_T_STRING) {
+                printf("BAD_CMD_PARAM\n");
+                return 0;
+            }
+            if ((msg.cmd = APE_cmd_lookup(head->jval.vu.str.value,
+                    head->jval.vu.str.length, ape)) == NULL) {
+                printf("BAD_CMD\n");
+                return 0;
+            }
+            if ((msg.cmd->flags & APE_CMD_REQ_USER) &&
+                    client->user_session == NULL) {
+                printf("NEED_AUTH\n");
+                return 0;
+            }
             
             break;
         default:
             break;
         }
     }
+    
+    if (msg.cmd != NULL) {
+        msg.cmd->call(&msg, ape);
+    }
 
+    return 1;
 }
 
 void ape_cmd_process_multi(json_item *head, ape_client *client, ape_global *ape)
 {
-    ape_cmd_spec_t *cmd;
-    
+
     if (head == NULL || head->jchild.child == NULL) {
         printf("JSON malformed?\n");
         return;
@@ -86,3 +110,18 @@ void ape_cmd_process_multi(json_item *head, ape_client *client, ape_global *ape)
     }
 
 }
+
+static void ape_cmd__connect(ape_message_t *msg, ape_global *ape)
+{
+    if (msg->client->user_session) {
+        /* Already connected */
+        return;
+    }
+    
+    msg->client->user_session = APE_user_session_new(APE_user_new(ape),
+                                    msg->client, ape);
+    
+    
+    printf("Got a connection - %s\n", msg->client->user_session->user->pipe->id.priv.str);
+}
+

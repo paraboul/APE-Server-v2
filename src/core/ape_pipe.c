@@ -9,7 +9,6 @@ static void ape_pipe_gen_id(ape_pipe *pipe, ape_pipe_id_t type,
     ape_htable_t *h;
     char *str;
     uint64_t *bin;
-    int i = 0;
     
     switch(type) {
         case APE_PIPE_PUB_ID:

@@ -16,3 +16,17 @@ ape_user *APE_user_new(ape_global *ape)
     return user;
 }
 
+ape_user_session *APE_user_session_new(ape_user *user,
+        ape_client *client, ape_global *ape)
+{
+    ape_user_session *session = malloc(sizeof(*session));
+    
+    session->user   = user;
+    session->client = client;
+    
+    session->time.idle    = time(NULL);
+    session->time.connect = session->time.idle;
+    
+    return session;
+}
+

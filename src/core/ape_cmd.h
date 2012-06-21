@@ -13,23 +13,24 @@
 #define APE_CMD_FAILFATAL    (1 << 1)
 
 
+typedef struct _ape_cmd_spec_t ape_cmd_spec_t;
+typedef struct _ape_message_t ape_message_t;
 
-typedef struct _ape_cmd_spec_t
+struct _ape_cmd_spec_t
 {
     const char      *name;
-    void            *call;
+    void            (*call)(ape_message_t *, ape_global *);
     uint16_t        flags;
-} ape_cmd_spec_t;
+};
 
-
-typedef struct _ape_message
+struct _ape_message_t
 {
     uint32_t chl;
     ape_cmd_spec_t *cmd;
     ape_client *client;
     time_t time;
     
-} ape_message_t;
+};
 
 int APE_cmd_register(ape_cmd_spec_t *spec, ape_global *ape);
 void ape_cmd_init_core(ape_global *ape);
