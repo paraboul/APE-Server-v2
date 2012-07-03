@@ -59,14 +59,14 @@ void buffer_prepare(buffer *b, size_t size)
     }
 }
 
-void buffer_append_data(buffer *b, const char *data, size_t size)
+void buffer_append_data(buffer *b, const unsigned char *data, size_t size)
 {
     buffer_prepare(b, size);
     memcpy(b->data + b->used, data, size);
     b->used += size;
 }
 
-void buffer_append_char(buffer *b, const char data)
+void buffer_append_char(buffer *b, const unsigned char data)
 {
     buffer_prepare(b, 1);
     b->data[b->used] = data;

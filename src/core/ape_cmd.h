@@ -14,16 +14,16 @@
 
 
 typedef struct _ape_cmd_spec_t ape_cmd_spec_t;
-typedef struct _ape_message_t ape_message_t;
+typedef struct _ape_message_client_t ape_message_client_t;
 
 struct _ape_cmd_spec_t
 {
     const char      *name;
-    void            (*call)(ape_message_t *, ape_global *);
+    void            (*call)(ape_message_client_t *, ape_global *);
     uint16_t        flags;
 };
 
-struct _ape_message_t
+struct _ape_message_client_t
 {
     uint32_t chl;
     ape_cmd_spec_t *cmd;

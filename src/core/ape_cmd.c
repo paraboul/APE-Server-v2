@@ -8,7 +8,7 @@
 #include <string.h>
 #include <time.h>
 
-static void ape_cmd__connect(ape_message_t *msg, ape_global *ape);
+static void ape_cmd__connect(ape_message_client_t *msg, ape_global *ape);
 
 static ape_cmd_spec_t ape_cmd_core[] = {
     APE_CMD("connect", ape_cmd__connect, APE_CMD_FAILFATAL),
@@ -40,8 +40,8 @@ ape_cmd_spec_t *APE_cmd_lookup(const char *name, int len, ape_global *ape)
 int ape_cmd_process(json_item *head, ape_client *client, ape_global *ape)
 {
     int i;
-    
-    ape_message_t msg = {
+
+    ape_message_client_t msg = {
         .cmd    = NULL,
         .client = client,
         .time   = time(NULL),
@@ -111,7 +111,7 @@ void ape_cmd_process_multi(json_item *head, ape_client *client, ape_global *ape)
 
 }
 
-static void ape_cmd__connect(ape_message_t *msg, ape_global *ape)
+static void ape_cmd__connect(ape_message_client_t *msg, ape_global *ape)
 {
     if (msg->client->user_session) {
         /* Already connected */
@@ -123,5 +123,6 @@ static void ape_cmd__connect(ape_message_t *msg, ape_global *ape)
     
     
     printf("Got a connection - %s\n", msg->client->user_session->user->pipe->id.priv.str);
+
 }
 
