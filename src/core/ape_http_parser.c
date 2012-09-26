@@ -181,11 +181,17 @@ inline int parse_http_char(struct _http_parser *parser, const unsigned char c)
 #define HTTP_BODY_AS_ENDED() (HTTP_ISBODYCONTENT() && --parser->cl == 0 && (parser->rx |= HTTP_FLG_READY, 1))
 
 
-    parser_class c_classe = ascii_class[c];
+    parser_class c_classe;
     int8_t state;
     unsigned char ch;
 
     parser->step++;
+    
+    if (c >= 128) {
+        c_classe = C_ETC;
+    } else {
+        c_classe = ascii_class[c];
+    }    
 
     if (c_classe == C_NUL || HTTP_ISREADY()) return 0;
 
