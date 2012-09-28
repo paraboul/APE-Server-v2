@@ -266,7 +266,7 @@ static void ape_socket_shutdown_force(ape_socket *socket)
     }
 }
 
-static void ape_socket_free(ape_socket *socket)
+static void ape_socket_free(ape_socket *socket, int *unused)
 {
     _ndec++;
 
