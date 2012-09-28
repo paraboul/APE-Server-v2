@@ -33,7 +33,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/uio.h>
-#include <sys/sendfile.h>
+//#include <sys/sendfile.h>
 #include <limits.h>
 #include <string.h>
       
@@ -60,11 +60,11 @@ int _nco = 0, _ndec = 0;
 static ape_socket_jobs_t *ape_socket_new_jobs_queue(size_t n);
 static ape_socket_jobs_t *ape_socket_job_get_slot(ape_socket *socket, int type);
 static ape_pool_list_t *ape_socket_new_packet_queue(size_t n);
-static int ape_socket_queue_data(ape_socket *socket, char *data, size_t len, size_t offset, ape_socket_data_autorelease data_type);
+static int ape_socket_queue_data(ape_socket *socket, unsigned char *data, size_t len, size_t offset, ape_socket_data_autorelease data_type);
 static void ape_init_job_list(ape_pool_list_t *list, size_t n);
 static void ape_socket_shutdown_force(ape_socket *socket);
 
-inline static void ape_socket_release_data(char *data, ape_socket_data_autorelease data_type)
+inline static void ape_socket_release_data(unsigned char *data, ape_socket_data_autorelease data_type)
 {
     switch (data_type) {
         case APE_DATA_AUTORELEASE:
@@ -373,6 +373,7 @@ int APE_socket_writev(ape_socket *socket, const struct iovec *iov, int iovcnt)
     return 0;
 }
 
+
 int APE_socket_write(ape_socket *socket, unsigned char *data,
     size_t len, ape_socket_data_autorelease data_type)
 {
@@ -538,7 +539,7 @@ int ape_socket_do_jobs(ape_socket *socket)
                 /* TODO : Handle this */
                 if (n == -1) {
                     if (errno == EAGAIN) {
-                        printf("EAGAIN in writev %d\n", n);
+                        printf("EAGAIN in writev %ld\n", n);
                     }
                     socket->states.flags |= APE_SOCKET_WOULD_BLOCK;
                     //job = (ape_socket_jobs_t *)job->next; /* useless? */
@@ -626,7 +627,7 @@ int ape_socket_do_jobs(ape_socket *socket)
 }
 
 static int ape_socket_queue_data(ape_socket *socket,
-        char *data, size_t len, size_t offset, ape_socket_data_autorelease data_type)
+        unsigned char *data, size_t len, size_t offset, ape_socket_data_autorelease data_type)
 {
     ape_socket_jobs_t *job;
     ape_socket_packet_t *packets;
@@ -638,7 +639,7 @@ static int ape_socket_queue_data(ape_socket *socket,
     data_type = (data_type == APE_DATA_STATIC ? APE_DATA_COPY : data_type);
     
     if (data_type == APE_DATA_COPY) {
-        char *data_copy = malloc(len);
+        unsigned char *data_copy = malloc(len);
         memcpy(data_copy, data, len);
         data = data_copy;
     }
@@ -744,7 +745,7 @@ inline int ape_socket_read(ape_socket *socket)
 
             if (nread < 0) {
                 unsigned long err = SSL_get_error(socket->SSL.ssl->con, nread);
-                printf("Err : %d\n", err);
+                printf("Err : %ld\n", err);
                 switch(err) {
                     case SSL_ERROR_ZERO_RETURN:
                         nread = 0;
@@ -763,10 +764,19 @@ inline int ape_socket_read(ape_socket *socket)
             }
             socket->data_in.used += ape_max(nread, 0);
         } else {
-        
+socket_reread:        
             nread = read(socket->s.fd,
                 socket->data_in.data + socket->data_in.used,
                 socket->data_in.size - socket->data_in.used);
+
+            if (nread == -1) {
+                switch(errno) {
+                    case EINTR:
+                        goto socket_reread;
+                    default:
+                        break;
+                }
+            }
 
             socket->data_in.used += ape_max(nread, 0);
         }
